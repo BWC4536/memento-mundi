@@ -59,7 +59,7 @@ export default function Home() {
   const { user, isAuthenticated } = useAuth();
   const [, setLocation] = useLocation();
   const [scrapbooks, setScrapbooks] = useState(demoScrapbooks);
-  const [selected, setSelected] = useState<Scrapbook | null>(null);
+  const [selected, setSelected] = useState<Scrapbook | null>(() => new URLSearchParams(window.location.search).has("preview") ? demoScrapbooks[0] : null);
   const [menu, setMenu] = useState<string | null>(null);
   const [modal, setModal] = useState<Modal>(null);
   const [activeTab, setActiveTab] = useState("Todos");
