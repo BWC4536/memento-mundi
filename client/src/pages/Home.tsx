@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowUpRight, Check, Compass, Globe2, Home as HomeIcon, MapPin, QrCode, ShoppingBag, Sparkles, UserRound, X } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -29,6 +29,10 @@ export default function Home() {
   const [hardwareNote, setHardwareNote] = useState("");
   const videoRef = useRef<HTMLVideoElement>(null);
   const feedTrips = !isAuthenticated ? trips : (ownedTrips ?? []).map((trip, index) => ({ ...trips[index % trips.length], id: String(trip.id), title: trip.title, city: trip.city, country: trip.country, cover: trip.coverUrl ?? trips[index % trips.length].cover }));
+
+  useEffect(() => {
+    if (window.location.hash === "#scan") setScannerOpen(true);
+  }, []);
 
   const dockItems: DockItem[] = useMemo(() => [
     { icon: <HomeIcon size={21} strokeWidth={2.6} />, label: "Home", onClick: () => { setActiveNav("Home"); setLocation("/"); } },

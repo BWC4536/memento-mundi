@@ -1,5 +1,6 @@
 import { ArrowLeft, Compass, Map, ShoppingBag, UserRound } from "lucide-react";
 import { useLocation } from "wouter";
+import ExplorePage from "@/pages/ExplorePage";
 
 type Section = "Tienda" | "Explorar" | "Perfil";
 
@@ -10,6 +11,7 @@ const content: Record<Section, { eyebrow: string; title: string; body: string; i
 };
 
 export default function SectionPage({ section }: { section: Section }) {
+  if (section === "Explorar") return <ExplorePage />;
   const [, setLocation] = useLocation();
   const item = content[section];
   const Icon = item.icon;

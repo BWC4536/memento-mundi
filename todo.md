@@ -19,3 +19,12 @@
 - [x] Ejecutar `pnpm build` y corregir cualquier error de producción.
 - [x] Mostrar estados visibles de carga, error y vacío para el feed sincronizado.
 - [x] Evitar que un feed autenticado vacío se presente como si tuviera viajes persistidos.
+
+# Plan: Página Explorar con mapa mundial
+
+- [x] Revisar el skill de mapas y el componente Map.tsx existente para elegir la integración más segura.
+- [x] Auditar App.tsx, Dock.tsx, Home.tsx y estilos globales para respetar la navegación y la identidad Soft Brutalism.
+- [x] Implementar la ruta Explorar con mapa mundial, zoom/pan fluidos y capas visuales coherentes.
+- [x] Añadir chinchetas demo para Barcelona, Madrid y Valencia con tarjetas/detalle al seleccionar.
+- [x] Conectar estados responsive, transiciones, accesibilidad y navegación desde el Dock.
+- [x] Ejecutar typecheck/tests/build y verificar visualmente la página en el preview.
