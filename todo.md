@@ -1,14 +1,13 @@
 
-# Plan: App-first con Scrapbooks
+# Plan: Editor de pizarra infinita inspirado en Canva
 
-- [x] Revisar la estructura actual de Home, rutas, componentes y esquema Supabase documentado.
-- [x] Añadir la foto adjunta como asset de portada de demo sin incluir bytes en la base de datos.
-- [x] Convertir Home en la colección principal de scrapbooks con tarjetas y acciones rápidas.
-- [x] Implementar la base visual de creación, invitados, compartir, añadir foto y borrar.
-- [x] Implementar detalle de scrapbook con modo Ver a pantalla completa y modo Editar.
-- [x] Añadir editor visual inicial con marcos, fotos y decoración, preparado para ampliar hacia Canva.
-- [x] Ampliar el esquema SQL de Supabase con scrapbooks, miembros, fotos, elementos, productos y RLS.
-- [x] Actualizar la navegación para que Casa vuelva siempre a la colección de scrapbooks.
-- [x] Verificar responsive, accesibilidad, TypeScript, tests y build; guardar checkpoint.
+- [x] Diseñar la arquitectura de elementos del lienzo: fotos, textos, marcos y decoración.
+- [x] Implementar pizarra infinita con pan, zoom y selección de elementos.
+- [x] Añadir controles de escala, rotación, duplicado, eliminación y orden de capas.
+- [x] Añadir filtros visuales, texto editable, marcos, stickers y carga de JPG/PNG/JPEG/WEBP/HEIC.
+- [x] Sustituir el editor modal anterior por la nueva experiencia de lienzo.
+- [x] Crear migración SQL Supabase versionada para scrapbooks, páginas, elementos, fotos y productos con RLS.
+- [x] Añadir pruebas para el modelo del lienzo y ejecutar check, tests y build.
+- [x] Verificar escritorio/móvil y guardar checkpoint.
 
-Siguiente fase: conectar estas entidades a Supabase Auth/Storage y sustituir el estado demo local por consultas persistentes; la UI actual deja los flujos listos, pero aún necesita URL/anon key de Supabase y procedimientos de persistencia.
+Nota: la conexión real a Supabase queda preparada pero pendiente de Project URL, anon key y configuración de Storage. La pizarra ya permite pan, selección, capas, texto editable, marcos, filtros, zoom, rotación y carga de imágenes.

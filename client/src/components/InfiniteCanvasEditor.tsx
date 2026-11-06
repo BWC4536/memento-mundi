@@ -1,0 +1,79 @@
+import { useMemo, useRef, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import { ChevronDown, ChevronUp, Copy, Download, Filter, ImagePlus, Layers3, Minus, Palette, Plus, RotateCcw, RotateCw, Save, Sparkles, Trash2, Type, WandSparkles, X } from "lucide-react";
+import type { Scrapbook } from "@/lib/scrapbooks";
+
+type CanvasElement = {
+  id: string;
+  type: "photo" | "text" | "sticker" | "frame";
+  x: number;
+  y: number;
+  scale: number;
+  rotation: number;
+  content: string;
+  filter: string;
+  z: number;
+};
+
+type FilterName = "normal" | "vivid" | "vintage" | "noir" | "warm";
+
+export const CANVAS_IMAGE_ACCEPT = "image/jpeg,image/png,image/webp,image/heic,image/heif";
+export const clampCanvasZoom = (value: number) => Math.max(0.55, Math.min(1.6, value));
+export const rotateCanvasElement = (value: number, degrees: number) => value + degrees;
+export const scaleCanvasElement = (value: number, delta: number) => Math.max(0.35, Math.min(1.8, value + delta));
+
+const filters: Array<{ name: FilterName; label: string; css: string }> = [
+  { name: "normal", label: "Original", css: "none" },
+  { name: "vivid", label: "Vivid", css: "saturate(1.45) contrast(1.08)" },
+  { name: "vintage", label: "Vintage", css: "sepia(.45) saturate(.82) contrast(1.05)" },
+  { name: "noir", label: "Noir", css: "grayscale(1) contrast(1.25)" },
+  { name: "warm", label: "Warm", css: "sepia(.25) saturate(1.2) hue-rotate(-8deg)" },
+];
+
+const initialElements = (scrapbook: Scrapbook): CanvasElement[] => [
+  { id: "cover", type: "photo", x: 0, y: -20, scale: 1, rotation: -2, content: scrapbook.cover, filter: "normal", z: 1 },
+  { id: "title", type: "text", x: -80, y: 170, scale: 1, rotation: -2, content: scrapbook.title, filter: "normal", z: 2 },
+  { id: "location", type: "sticker", x: 115, y: -140, scale: 1, rotation: 8, content: scrapbook.location.toUpperCase(), filter: "normal", z: 3 },
+];
+
+function filterCss(name: string) {
+  return filters.find((item) => item.name === name)?.css ?? "none";
+}
+
+export default function InfiniteCanvasEditor({ scrapbook, onClose }: { scrapbook: Scrapbook; onClose: () => void }) {
+  const [elements, setElements] = useState(() => initialElements(scrapbook));
+  const [selectedId, setSelectedId] = useState("cover");
+  const [zoom, setZoom] = useState(1);
+  const [activePanel, setActivePanel] = useState<"design" | "upload" | "text" | "layers">("design");
+  const [saved, setSaved] = useState(false);
+  const uploadRef = useRef<HTMLInputElement>(null);
+  const selected = elements.find((element) => element.id === selectedId);
+  const ordered = useMemo(() => [...elements].sort((a, b) => b.z - a.z), [elements]);
+
+  const updateSelected = (patch: Partial<CanvasElement>) => {
+    setElements((current) => current.map((element) => element.id === selectedId ? { ...element, ...patch } : element));
+  };
+  const addElement = (element: CanvasElement) => {
+    setElements((current) => [...current, { ...element, z: Math.max(...current.map((item) => item.z), 0) + 1 }]);
+    setSelectedId(element.id);
+  };
+  const addText = () => addElement({ id: `text-${Date.now()}`, type: "text", x: 0, y: 80, scale: 1, rotation: -2, content: "Escribe aquí", filter: "normal", z: 0 });
+  const addSticker = (content: string) => addElement({ id: `sticker-${Date.now()}`, type: "sticker", x: 0, y: 80, scale: 1, rotation: 4, content, filter: "normal", z: 0 });
+  const removeSelected = () => { if (selectedId === "cover") return; setElements((current) => current.filter((element) => element.id !== selectedId)); setSelectedId("cover"); };
+  const duplicateSelected = () => { if (!selected) return; addElement({ ...selected, id: `${selected.type}-${Date.now()}`, x: selected.x + 30, y: selected.y + 30 }); };
+  const layer = (direction: "up" | "down") => updateSelected({ z: (selected?.z ?? 1) + (direction === "up" ? 1 : -1) });
+
+  return <div className="fixed inset-0 z-50 flex flex-col bg-[#172d36] text-cream">
+    <header className="flex h-16 shrink-0 items-center justify-between border-b-2 border-cream/15 bg-ink px-4 sm:px-6">
+      <div className="flex items-center gap-3"><button type="button" onClick={onClose} aria-label="Cerrar editor" className="rounded-xl border-2 border-cream/40 p-2 transition-colors hover:bg-orange hover:text-ink"><X size={18} /></button><div><p className="text-[9px] font-black uppercase tracking-[.2em] text-orange">Pizarra infinita</p><p className="font-display text-sm font-black">{scrapbook.title}</p></div></div>
+      <div className="hidden items-center gap-2 rounded-full border border-cream/20 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-cream/60 sm:flex"><WandSparkles size={13} className="text-orange" /> Inspirado en Canva · lienzo libre</div>
+      <div className="flex items-center gap-2"><button type="button" onClick={() => setSaved(true)} className="flex items-center gap-2 rounded-xl border-2 border-cream bg-orange px-3 py-2 text-xs font-black text-ink shadow-[3px_3px_0_#EAE7DA]"><Save size={15} /> <span className="hidden sm:inline">{saved ? "Guardado" : "Guardar"}</span></button><button type="button" aria-label="Descargar diseño" className="rounded-xl border-2 border-cream/40 p-2"><Download size={17} /></button></div>
+    </header>
+    <div className="flex min-h-0 flex-1">
+      <aside className="z-20 flex w-[76px] shrink-0 flex-col items-center gap-2 border-r-2 border-cream/15 bg-ink px-2 py-4 sm:w-24"><button type="button" onClick={() => { setActivePanel("design"); }} className={`editor-tool ${activePanel === "design" ? "active" : ""}`}><Palette size={19} /><span>Diseño</span></button><button type="button" onClick={() => { setActivePanel("upload"); uploadRef.current?.click(); }} className={`editor-tool ${activePanel === "upload" ? "active" : ""}`}><ImagePlus size={19} /><span>Fotos</span></button><button type="button" onClick={() => { setActivePanel("text"); addText(); }} className={`editor-tool ${activePanel === "text" ? "active" : ""}`}><Type size={19} /><span>Texto</span></button><button type="button" onClick={() => setActivePanel("layers")} className={`editor-tool ${activePanel === "layers" ? "active" : ""}`}><Layers3 size={19} /><span>Capas</span></button><input ref={uploadRef} type="file" accept={CANVAS_IMAGE_ACCEPT} className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (!file) return; addElement({ id: `photo-${Date.now()}`, type: "photo", x: 40, y: 40, scale: .72, rotation: 3, content: URL.createObjectURL(file), filter: "normal", z: 0 }); }} /></aside>
+      <main className="relative min-w-0 flex-1 overflow-hidden bg-[#203a43]" onClick={() => setSelectedId("")}><div className="pointer-events-none absolute inset-0 opacity-20" style={{ backgroundImage: "radial-gradient(#EAE7DA 1px, transparent 1px)", backgroundSize: "24px 24px" }} /><motion.div drag dragMomentum={false} dragElastic={0.08} className="absolute left-1/2 top-1/2 h-[620px] w-[820px] -translate-x-1/2 -translate-y-1/2 cursor-grab active:cursor-grabbing" style={{ scale: zoom }} aria-label="Pizarra infinita desplazable"><div className="absolute inset-0 rounded-[2rem] border-2 border-ink bg-[#d6dfd8] shadow-[12px_12px_0_rgba(11,33,48,.45)]"><div className="absolute inset-5 overflow-hidden rounded-2xl border-2 border-ink bg-[#eae7da]">{ordered.map((element) => <motion.div key={element.id} drag dragMomentum={false} onClick={(event) => { event.stopPropagation(); setSelectedId(element.id); }} onDragEnd={(_, info) => updateSelected({ x: element.x + info.offset.x, y: element.y + info.offset.y })} style={{ x: element.x, y: element.y, rotate: element.rotation, scale: element.scale, zIndex: element.z, filter: filterCss(element.filter) }} className={`absolute left-1/2 top-1/2 cursor-grab select-none active:cursor-grabbing ${selectedId === element.id ? "ring-4 ring-orange ring-offset-2" : ""} ${element.type === "photo" ? "w-72 rounded-xl border-8 border-white shadow-[0_0_0_2px_#0B2130,7px_7px_0_#0B2130]" : element.type === "text" ? "min-w-52 rounded-lg border-2 border-ink bg-cream px-4 py-2 font-display text-3xl font-black text-ink shadow-hard-sm" : element.type === "sticker" ? "rounded-full border-2 border-ink bg-orange px-4 py-2 text-xs font-black tracking-wider text-ink shadow-hard-sm" : "rounded-xl border-4 border-orange p-4"}`}>{element.type === "photo" ? <img src={element.content} alt="Elemento de foto" className="pointer-events-none aspect-[4/3] w-full rounded object-cover" /> : element.type === "frame" ? <div className="h-48 w-64 border-4 border-dashed border-ink" /> : element.content}</motion.div>)}</div><div className="pointer-events-none absolute bottom-4 left-6 text-[10px] font-black uppercase tracking-[.16em] text-ink/50">Pizarra sin límites · arrastra los elementos</div></div></motion.div><div className="absolute bottom-5 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1 rounded-2xl border-2 border-cream/30 bg-ink/90 p-1.5 shadow-hard-sm"><button type="button" onClick={() => setZoom((value) => Math.max(.55, value - .1))} className="rounded-xl p-2 hover:bg-orange hover:text-ink"><Minus size={16} /></button><span className="min-w-14 text-center text-[10px] font-black">{Math.round(zoom * 100)}%</span><button type="button" onClick={() => setZoom((value) => Math.min(1.6, value + .1))} className="rounded-xl p-2 hover:bg-orange hover:text-ink"><Plus size={16} /></button></div></main>
+      <aside className="hidden w-72 shrink-0 overflow-y-auto border-l-2 border-cream/15 bg-ink p-4 lg:block">{activePanel === "design" && <div><p className="editor-label">Plantillas rápidas</p><div className="grid grid-cols-2 gap-2">{["bg-cream", "bg-orange", "bg-[#d7dfd6]", "bg-[#f2c5a0]"].map((color, index) => <button type="button" key={color} onClick={() => addSticker(["✦", "✺", "☼", "♡"][index])} className={`flex h-20 items-center justify-center rounded-xl border-2 border-cream/40 ${color} text-2xl text-ink`}>{["✦", "✺", "☼", "♡"][index]}</button>)}</div><button type="button" onClick={() => addElement({ id: `frame-${Date.now()}`, type: "frame", x: 0, y: 0, scale: 1, rotation: 0, content: "Marco", filter: "normal", z: 0 })} className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border-2 border-cream/20 px-3 py-3 text-xs font-black hover:border-orange"><Layers3 size={16} /> Añadir marco</button><p className="mt-6 editor-label">Filtros visuales</p><div className="grid grid-cols-2 gap-2">{filters.map((item) => <button type="button" key={item.name} onClick={() => selected && updateSelected({ filter: item.name })} className="overflow-hidden rounded-xl border-2 border-cream/20 text-left text-[10px] font-black text-cream/75 hover:border-orange"><img src={scrapbook.cover} alt={item.label} style={{ filter: item.css }} className="h-16 w-full object-cover" /><span className="block p-2">{item.label}</span></button>)}</div></div>}{activePanel === "upload" && <div><p className="editor-label">Tus archivos</p><button type="button" onClick={() => uploadRef.current?.click()} className="flex w-full flex-col items-center rounded-2xl border-2 border-dashed border-cream/30 p-6 text-center hover:border-orange"><ImagePlus className="text-orange" /><span className="mt-2 text-xs font-black">Subir JPG, PNG, JPEG, WEBP o HEIC</span></button><p className="mt-4 text-xs leading-relaxed text-cream/55">Arrastra cada foto dentro de la pizarra, cambia su tamaño y gírala como una pieza de collage.</p></div>}{activePanel === "text" && <div><p className="editor-label">Capas de texto</p><button type="button" onClick={addText} className="flex w-full items-center gap-2 rounded-xl border-2 border-orange bg-orange/15 px-3 py-3 text-xs font-black"><Type size={17} /> Añadir título</button><button type="button" onClick={() => addElement({ id: `body-${Date.now()}`, type: "text", x: 10, y: 120, scale: .7, rotation: 0, content: "Una nota para recordar.", filter: "normal", z: 0 })} className="mt-2 flex w-full items-center gap-2 rounded-xl border-2 border-cream/20 px-3 py-3 text-xs font-black"><Type size={15} /> Añadir nota</button></div>}{activePanel === "layers" && <div><p className="editor-label">Orden de capas</p><div className="space-y-2">{ordered.map((element) => <button type="button" key={element.id} onClick={() => setSelectedId(element.id)} className={`flex w-full items-center justify-between rounded-xl border-2 px-3 py-2 text-left text-xs font-black ${selectedId === element.id ? "border-orange bg-orange/15" : "border-cream/15"}`}><span className="max-w-36 truncate">{element.type === "photo" ? "Foto" : element.content}</span><span className="text-cream/40">z{element.z}</span></button>)}</div></div>}{selected && <div className="mt-8 border-t-2 border-cream/15 pt-5"><p className="editor-label">Elemento seleccionado</p>{selected.type === "text" && <label className="mb-3 block text-[10px] font-black uppercase tracking-wider text-cream/60">Texto<input value={selected.content} onChange={(event) => updateSelected({ content: event.target.value })} className="mt-2 w-full rounded-xl border-2 border-cream/20 bg-cream px-3 py-2 text-sm font-black text-ink outline-none focus:border-orange" /></label>}<div className="grid grid-cols-2 gap-2"><button type="button" onClick={() => updateSelected({ scale: Math.min(1.8, selected.scale + .1) })} className="editor-action"><Plus size={15} /> Escala</button><button type="button" onClick={() => updateSelected({ scale: Math.max(.35, selected.scale - .1) })} className="editor-action"><Minus size={15} /> Reducir</button><button type="button" onClick={() => updateSelected({ rotation: selected.rotation - 10 })} className="editor-action"><RotateCcw size={15} /> Girar</button><button type="button" onClick={() => updateSelected({ rotation: selected.rotation + 10 })} className="editor-action"><RotateCw size={15} /> Girar</button><button type="button" onClick={() => layer("up")} className="editor-action"><ChevronUp size={15} /> Frente</button><button type="button" onClick={() => layer("down")} className="editor-action"><ChevronDown size={15} /> Atrás</button><button type="button" onClick={duplicateSelected} className="editor-action"><Copy size={15} /> Duplicar</button><button type="button" onClick={removeSelected} className="editor-action text-[#f2c5a0]"><Trash2 size={15} /> Borrar</button></div></div>}</aside>
+    </div>
+    <AnimatePresence>{saved && <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="absolute bottom-5 right-5 z-30 rounded-xl border-2 border-ink bg-orange px-4 py-3 text-xs font-black text-ink shadow-hard-sm">Borrador guardado en esta sesión</motion.div>}</AnimatePresence>
+  </div>;
+}
