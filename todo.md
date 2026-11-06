@@ -1,30 +1,14 @@
-# Project TODO
 
-- [x] Definir el modelo de datos para perfiles, viajes y pegatinas geolocalizadas.
-- [x] Añadir relaciones, índices y políticas RLS para aislar los datos por usuario.
-- [x] Implementar tokens visuales Soft Brutalism en Tailwind y estilos globales.
-- [x] Construir la estructura de navegación de la aplicación y el shell responsive.
-- [x] Implementar el Dock fijo con exactamente Home, Tienda, Escanear, Explorar y Perfil.
-- [x] Añadir interacciones elásticas del Dock con Framer Motion y estados accesibles.
-- [x] Implementar el feed principal con tarjetas de álbum, portada y estado de desbloqueo.
-- [x] Implementar el flujo de escaneo QR/NFC y la confirmación de desbloqueo.
-- [x] Conectar el feed y el desbloqueo con procedimientos backend y persistencia.
-- [x] Crear y actualizar pruebas Vitest para las rutas y reglas principales.
-- [x] Verificar tipos, build, pruebas y capturas responsive del producto.
-- [x] Crear vistas reales o placeholders visibles para Tienda, Explorar y Perfil.
-- [x] Refactorizar el Dock para compartir el puntero y magnificar el grupo de forma elástica.
-- [x] Conectar Home con `trpc.trips.mine` y `trpc.trips.unlockSticker`, incluyendo estados de carga, error y vacío.
-- [x] Añadir entrada manual de token y detección progresiva de QR/NFC cuando el navegador lo permita.
-- [x] Ampliar las pruebas con casos de éxito para feed y desbloqueo.
-- [x] Ejecutar `pnpm build` y corregir cualquier error de producción.
-- [x] Mostrar estados visibles de carga, error y vacío para el feed sincronizado.
-- [x] Evitar que un feed autenticado vacío se presente como si tuviera viajes persistidos.
+# Plan: App-first con Scrapbooks
 
-# Plan: Página Explorar con mapa mundial
+- [x] Revisar la estructura actual de Home, rutas, componentes y esquema Supabase documentado.
+- [x] Añadir la foto adjunta como asset de portada de demo sin incluir bytes en la base de datos.
+- [x] Convertir Home en la colección principal de scrapbooks con tarjetas y acciones rápidas.
+- [x] Implementar la base visual de creación, invitados, compartir, añadir foto y borrar.
+- [x] Implementar detalle de scrapbook con modo Ver a pantalla completa y modo Editar.
+- [x] Añadir editor visual inicial con marcos, fotos y decoración, preparado para ampliar hacia Canva.
+- [x] Ampliar el esquema SQL de Supabase con scrapbooks, miembros, fotos, elementos, productos y RLS.
+- [x] Actualizar la navegación para que Casa vuelva siempre a la colección de scrapbooks.
+- [x] Verificar responsive, accesibilidad, TypeScript, tests y build; guardar checkpoint.
 
-- [x] Revisar el skill de mapas y el componente Map.tsx existente para elegir la integración más segura.
-- [x] Auditar App.tsx, Dock.tsx, Home.tsx y estilos globales para respetar la navegación y la identidad Soft Brutalism.
-- [x] Implementar la ruta Explorar con mapa mundial, zoom/pan fluidos y capas visuales coherentes.
-- [x] Añadir chinchetas demo para Barcelona, Madrid y Valencia con tarjetas/detalle al seleccionar.
-- [x] Conectar estados responsive, transiciones, accesibilidad y navegación desde el Dock.
-- [x] Ejecutar typecheck/tests/build y verificar visualmente la página en el preview.
+Siguiente fase: conectar estas entidades a Supabase Auth/Storage y sustituir el estado demo local por consultas persistentes; la UI actual deja los flujos listos, pero aún necesita URL/anon key de Supabase y procedimientos de persistencia.
