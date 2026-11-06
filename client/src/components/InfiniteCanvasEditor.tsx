@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ChevronDown, ChevronUp, Copy, Download, Filter, ImagePlus, Layers3, Minus, Palette, Plus, RotateCcw, RotateCw, Save, Sparkles, Trash2, Type, WandSparkles, X } from "lucide-react";
 import type { Scrapbook } from "@/lib/scrapbooks";
 
-type CanvasElement = {
+export type CanvasElement = {
   id: string;
   type: "photo" | "text" | "sticker" | "frame";
   x: number;
@@ -30,7 +30,7 @@ const filters: Array<{ name: FilterName; label: string; css: string }> = [
   { name: "warm", label: "Warm", css: "sepia(.25) saturate(1.2) hue-rotate(-8deg)" },
 ];
 
-const initialElements = (scrapbook: Scrapbook): CanvasElement[] => [
+export const initialCanvasElements = (scrapbook: Scrapbook): CanvasElement[] => [
   { id: "cover", type: "photo", x: 0, y: -20, scale: 1, rotation: -2, content: scrapbook.cover, filter: "normal", z: 1 },
   { id: "title", type: "text", x: -80, y: 170, scale: 1, rotation: -2, content: scrapbook.title, filter: "normal", z: 2 },
   { id: "location", type: "sticker", x: 115, y: -140, scale: 1, rotation: 8, content: scrapbook.location.toUpperCase(), filter: "normal", z: 3 },
@@ -40,8 +40,8 @@ function filterCss(name: string) {
   return filters.find((item) => item.name === name)?.css ?? "none";
 }
 
-export default function InfiniteCanvasEditor({ scrapbook, onClose }: { scrapbook: Scrapbook; onClose: () => void }) {
-  const [elements, setElements] = useState(() => initialElements(scrapbook));
+export default function InfiniteCanvasEditor({ scrapbook, onClose, onSave, initialElements }: { scrapbook: Scrapbook; onClose: () => void; onSave?: (elements: CanvasElement[]) => void; initialElements?: CanvasElement[] }) {
+  const [elements, setElements] = useState(() => initialElements ?? initialCanvasElements(scrapbook));
   const [selectedId, setSelectedId] = useState("cover");
   const [zoom, setZoom] = useState(1);
   const [activePanel, setActivePanel] = useState<"elements" | "upload" | "text" | "layers">("elements");
@@ -67,7 +67,7 @@ export default function InfiniteCanvasEditor({ scrapbook, onClose }: { scrapbook
     <header className="flex h-16 shrink-0 items-center justify-between border-b-2 border-cream/15 bg-ink px-4 sm:px-6">
       <div className="flex items-center gap-3"><button type="button" onClick={onClose} aria-label="Cerrar editor" className="rounded-xl border-2 border-cream/40 p-2 transition-colors hover:bg-orange hover:text-ink"><X size={18} /></button><div><p className="text-[9px] font-black uppercase tracking-[.2em] text-orange">Pizarra infinita</p><p className="font-display text-sm font-black">{scrapbook.title}</p></div></div>
       <div className="hidden items-center gap-2 rounded-full border border-cream/20 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-cream/60 sm:flex"><WandSparkles size={13} className="text-orange" /> Inspirado en Canva · lienzo libre</div>
-      <div className="flex items-center gap-2"><button type="button" onClick={() => setSaved(true)} className="flex items-center gap-2 rounded-xl border-2 border-cream bg-orange px-3 py-2 text-xs font-black text-ink shadow-[3px_3px_0_#EAE7DA]"><Save size={15} /> <span className="hidden sm:inline">{saved ? "Guardado" : "Guardar"}</span></button><button type="button" aria-label="Descargar diseño" className="rounded-xl border-2 border-cream/40 p-2"><Download size={17} /></button></div>
+      <div className="flex items-center gap-2"><button type="button" onClick={() => { setSaved(true); onSave?.(elements); }} className="flex items-center gap-2 rounded-xl border-2 border-cream bg-orange px-3 py-2 text-xs font-black text-ink shadow-[3px_3px_0_#EAE7DA]"><Save size={15} /> <span className="hidden sm:inline">{saved ? "Guardado" : "Guardar"}</span></button><button type="button" aria-label="Descargar diseño" className="rounded-xl border-2 border-cream/40 p-2"><Download size={17} /></button></div>
     </header>
     <div className="flex min-h-0 flex-1">
       <aside className="z-20 flex w-[76px] shrink-0 flex-col items-center gap-2 border-r-2 border-cream/15 bg-ink px-2 py-4 sm:w-24"><button type="button" onClick={() => { setActivePanel("elements"); }} className={`editor-tool ${activePanel === "elements" ? "active" : ""}`}><Palette size={19} /><span>Elementos</span></button><button type="button" onClick={() => { setActivePanel("upload"); uploadRef.current?.click(); }} className={`editor-tool ${activePanel === "upload" ? "active" : ""}`}><ImagePlus size={19} /><span>Fotos</span></button><button type="button" onClick={() => { setActivePanel("text"); addText(); }} className={`editor-tool ${activePanel === "text" ? "active" : ""}`}><Type size={19} /><span>Texto</span></button><button type="button" onClick={() => setActivePanel("layers")} className={`editor-tool ${activePanel === "layers" ? "active" : ""}`}><Layers3 size={19} /><span>Capas</span></button><input ref={uploadRef} type="file" accept={CANVAS_IMAGE_ACCEPT} className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (!file) return; addElement({ id: `photo-${Date.now()}`, type: "photo", x: 40, y: 40, scale: .72, rotation: 3, content: URL.createObjectURL(file), filter: "normal", z: 0 }); }} /></aside>

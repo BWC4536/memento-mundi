@@ -1,8 +1,10 @@
 
-# Plan: Previsualización real del scrapbook
+# Plan: Persistencia real de la composición editada
 
-- [x] Separar la miniatura de Home de la composición interna del scrapbook.
-- [x] Crear una composición reutilizable con foto, texto, ubicación y decoración.
-- [x] Mostrar esa composición al entrar al scrapbook antes de pulsar Ver.
-- [x] Abrir la misma composición completa en fullscreen con X y arrastre.
-- [x] Verificar preview, fullscreen, responsive, tests y build.
+- [x] Devolver los elementos del lienzo desde el editor al guardar.
+- [x] Mantener las composiciones guardadas por scrapbook en Home.
+- [x] Renderizar en preview y Ver los elementos editados, incluido texto escrito.
+- [x] Probar manualmente añadir texto `hola`, guardar, cerrar y abrir Ver.
+- [x] Ejecutar check, tests y build; guardar checkpoint.
+
+Prueba manual completada: se creó una capa de texto, se escribió `hola`, se pulsó Guardar, se cerró el editor y `Ver` mostró `hola` dentro de la composición completa.
