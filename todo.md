@@ -1,13 +1,12 @@
 
-# Plan: Editor de pizarra infinita inspirado en Canva
+# Plan: Flujo de scrapbook y escáner QR
 
-- [x] Diseñar la arquitectura de elementos del lienzo: fotos, textos, marcos y decoración.
-- [x] Implementar pizarra infinita con pan, zoom y selección de elementos.
-- [x] Añadir controles de escala, rotación, duplicado, eliminación y orden de capas.
-- [x] Añadir filtros visuales, texto editable, marcos, stickers y carga de JPG/PNG/JPEG/WEBP/HEIC.
-- [x] Sustituir el editor modal anterior por la nueva experiencia de lienzo.
-- [x] Crear migración SQL Supabase versionada para scrapbooks, páginas, elementos, fotos y productos con RLS.
-- [x] Añadir pruebas para el modelo del lienzo y ejecutar check, tests y build.
-- [x] Verificar escritorio/móvil y guardar checkpoint.
+- [x] Revisar el detalle y el editor actuales para separar claramente Ver y Editar.
+- [x] Convertir el click del scrapbook en una vista fotográfica limpia con botones Editar/Ver.
+- [x] Mejorar el visor fullscreen con X, arrastre y controles móviles.
+- [x] Corregir edición de texto y diseño para que funcionen en móvil.
+- [x] Crear sección Elementos con marcos que se ajusten a la foto y controles de escala/filtros.
+- [x] Recuperar cámara y QR en el botón Escanear con BarcodeDetector y fallback manual.
+- [x] Añadir pruebas de los estados del editor y ejecutar check, tests, build y verificación responsive.
 
-Nota: la conexión real a Supabase queda preparada pero pendiente de Project URL, anon key y configuración de Storage. La pizarra ya permite pan, selección, capas, texto editable, marcos, filtros, zoom, rotación y carga de imágenes.
+Comprobado en navegador: abrir scrapbook muestra únicamente la foto con `Editar` y `Ver`; `Ver` abre fullscreen y `X` lo cierra; el Dock permanece visible; `Escanear` abre cámara/QR con fallback manual; el editor muestra Elementos, marcos y controles móviles.
