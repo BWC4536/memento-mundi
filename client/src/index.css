@@ -4,13 +4,20 @@
 @import "tw-animate-css";
 
 @font-face {
+  font-family: "Brasika Display - Trial";
+  src: url("/__manus__/brasika-display-trial.otf") format("opentype");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
   font-family: "Briska";
-  src: url("/manus-storage/briska-display-trial_ec40d187.otf") format("opentype"),
+  src: url("/__manus__/brasika-display-trial.otf") format("opentype"),
     url("https://drive.google.com/uc?export=download&id=1p2VVe_CI3QIhrn_DM16RC2zIAOavpfdP") format("opentype");
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  unicode-range: U+0000-007F;
 }
 
 :root {
@@ -33,7 +40,7 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: "Cormorant Garamond", Georgia, serif;
-  --font-display: "Briska", "Cormorant Garamond", Georgia, serif;
+  --font-display: "Brasika Display - Trial", "Briska", "Cormorant Garamond", Georgia, serif;
   --font-brand: "Brasika Display - Trial", Georgia, serif;
   --font-mono: "Cormorant Garamond", Georgia, serif;
   --shadow-hard: 5px 5px 0 #0b2130;
@@ -43,14 +50,14 @@
 * { box-sizing: border-box; font-synthesis: none; }
 html { scroll-behavior: smooth; }
 body { margin: 0; min-width: 320px; background: var(--background); color: var(--foreground); font-family: "Cormorant Garamond", Georgia, serif; font-weight: 500; font-synthesis: none; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
-h1, h2, h3, h4, h5, h6 { font-family: "Briska", "Cormorant Garamond", Georgia, serif !important; font-weight: 400 !important; font-synthesis: none !important; overflow-wrap: anywhere; }
+h1, h2, h3, h4, h5, h6 { font-family: "Brasika Display - Trial", "Briska", "Cormorant Garamond", Georgia, serif !important; font-weight: 400 !important; font-synthesis: none !important; overflow-wrap: anywhere; }
 h1 { font-size: clamp(2.8rem, 8vw, 7rem) !important; line-height: .94; }
 h2 { font-size: clamp(2rem, 5vw, 4.5rem) !important; line-height: .98; }
 h3 { font-size: clamp(1.6rem, 3.8vw, 3.25rem) !important; line-height: 1; }
 h4 { font-size: clamp(1.35rem, 3vw, 2.25rem) !important; line-height: 1.04; }
 h5 { font-size: clamp(1.15rem, 2.4vw, 1.75rem) !important; line-height: 1.08; }
 h6 { font-size: clamp(1rem, 2vw, 1.35rem) !important; line-height: 1.12; }
-.font-display { font-family: "Briska", "Cormorant Garamond", Georgia, serif !important; font-weight: 400 !important; font-synthesis: none !important; line-height: .94; letter-spacing: -.025em; }
+.font-display { font-family: "Brasika Display - Trial", "Briska", "Cormorant Garamond", Georgia, serif !important; font-weight: 400 !important; font-synthesis: none !important; line-height: .94; letter-spacing: -.025em; }
 .font-brand { font-family: "Brasika Display - Trial", Georgia, serif !important; font-weight: 400 !important; font-synthesis: none !important; }
 .font-mono { font-family: "Cormorant Garamond", Georgia, serif !important; font-weight: 500 !important; font-variant-numeric: lining-nums tabular-nums; font-feature-settings: "lnum" 1, "tnum" 1; }
 button, input, textarea, select { font-family: "Cormorant Garamond", Georgia, serif; font-synthesis: none; }
