@@ -1,4 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+@import url('https://fonts.cdnfonts.com/css/brasika-display-trial');
+@import url('https://fonts.cdnfonts.com/css/grown-personal-use');
 @import "tailwindcss";
 @import "tw-animate-css";
 
@@ -21,16 +22,16 @@
   --color-card: var(--card);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "DM Mono", monospace;
+  --font-sans: "Grown Personal Use", Georgia, serif;
+  --font-display: "Brasika Display - Trial", Georgia, serif;
+  --font-mono: "Grown Personal Use", Georgia, serif;
   --shadow-hard: 5px 5px 0 #0b2130;
   --shadow-hard-sm: 3px 3px 0 #0b2130;
 }
 
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
-body { margin: 0; min-width: 320px; background: var(--background); color: var(--foreground); font-family: "Space Grotesk", sans-serif; }
+body { margin: 0; min-width: 320px; background: var(--background); color: var(--foreground); font-family: "Grown Personal Use", Georgia, serif; }
 body::before { content: ""; pointer-events: none; position: fixed; inset: 0; z-index: 60; opacity: .075; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E"); mix-blend-mode: multiply; }
 button, a { -webkit-tap-highlight-color: transparent; }
 button:focus-visible, a:focus-visible { outline: 3px solid var(--primary); outline-offset: 3px; }
