@@ -5,7 +5,8 @@
 
 @font-face {
   font-family: "Briska";
-  src: url("https://drive.google.com/uc?export=download&id=1p2VVe_CI3QIhrn_DM16RC2zIAOavpfdP") format("opentype");
+  src: url("/manus-storage/briska-display-trial_ec40d187.otf") format("opentype"),
+    url("https://drive.google.com/uc?export=download&id=1p2VVe_CI3QIhrn_DM16RC2zIAOavpfdP") format("opentype");
   font-style: normal;
   font-weight: 400;
   font-display: swap;
