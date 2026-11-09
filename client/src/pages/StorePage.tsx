@@ -1,10 +1,11 @@
 import { useMemo, useState } from "react";
+import { motion } from "framer-motion";
 import { ArrowRight, Check, ChevronDown, Compass, Heart, Home, Instagram, MapPin, Minus, Package, Plus, QrCode, ShoppingBag, Sparkles, Star, Tag, UserRound, X } from "lucide-react";
 import { useLocation } from "wouter";
 import { startLogin } from "@/const";
 import { useAuth } from "@/_core/hooks/useAuth";
 import Dock, { type DockItem } from "@/components/Dock";
-import StickerScrollHero from "@/components/StickerScrollHero";
+import IntroVideoHero from "@/components/IntroVideoHero";
 
 type ProductKind = "sticker" | "keyring" | "magnet" | "ornament" | "wall";
 type Pack = { id: string; name: string; kicker: string; description: string; price: string; badge?: string; color: string; image: string; items: string[]; featured?: boolean };
@@ -39,6 +40,7 @@ export default function StorePage() {
   const [, setLocation] = useLocation();
   const [cart, setCart] = useState<Pack[]>([]);
   const [showCart, setShowCart] = useState(false);
+  const [isIntroFinished, setIsIntroFinished] = useState(false);
   const total = useMemo(() => cart.reduce((sum, item) => sum + Number(item.price.replace(" €", "")), 0), [cart]);
   const dock: DockItem[] = [
     { icon: <Home size={21} strokeWidth={2.6} />, label: "Casa", onClick: () => setLocation(isAuthenticated ? "/" : "/store") },
@@ -48,5 +50,120 @@ export default function StorePage() {
   ];
   const handleLogin = () => isAuthenticated ? setLocation("/") : startLogin();
   const addPack = (pack: Pack) => { setCart((current) => [...current, pack]); setShowCart(true); };
-  return <main className="min-h-screen overflow-hidden pb-28"><div className="mx-auto max-w-7xl px-5 pb-12 pt-5 sm:px-8 lg:px-12"><StoreHeader onHome={() => isAuthenticated ? setLocation("/") : setLocation("/store")} onLogin={handleLogin} loggedIn={isAuthenticated} /><StickerScrollHero /><section className="mt-14 grid gap-4 sm:grid-cols-3" id="how"><div className="rounded-[1.4rem] border-2 border-ink bg-orange p-5 shadow-hard-sm"><span className="font-mono text-3xl">01</span><h2 className="mt-8 font-display text-2xl font-black">Pega</h2><p className="mt-2 text-sm font-medium text-ink/70">Coloca tu pegatina en una postal, mochila o cuaderno.</p></div><div className="rounded-[1.4rem] border-2 border-ink bg-white/55 p-5 shadow-hard-sm"><span className="font-mono text-3xl">02</span><h2 className="mt-8 font-display text-2xl font-black">Escanea</h2><p className="mt-2 text-sm font-medium text-ink/70">Abre Memento Mundi y desbloquea el scrapbook de esa coordenada.</p></div><div className="rounded-[1.4rem] border-2 border-ink bg-[#d8e2dc] p-5 shadow-hard-sm"><span className="font-mono text-3xl">03</span><h2 className="mt-8 font-display text-2xl font-black">Vuelve</h2><p className="mt-2 text-sm font-medium text-ink/70">Añade fotos, invita a tu gente y deja que el recuerdo crezca.</p></div></section><section className="mt-20" id="packs"><div className="flex flex-col justify-between gap-5 border-b-2 border-ink/15 pb-5 sm:flex-row sm:items-end"><div><p className="text-[10px] font-black uppercase tracking-[.2em] text-orange">Colección física</p><h2 className="mt-2 font-display text-5xl font-black leading-none tracking-[-.07em] sm:text-6xl">Elige cómo<br /><span className="text-orange">quieres volver.</span></h2></div><p className="max-w-xs text-sm font-medium leading-relaxed text-ink/60">Todos los packs incluyen al menos una pegatina NFC + QR. Combina objetos según el viaje.</p></div><div className="mt-7 grid gap-5 md:grid-cols-2 lg:grid-cols-3">{packs.map((pack) => <PackCard key={pack.id} pack={pack} onAdd={addPack} />)}</div></section><section className="mt-20 overflow-hidden rounded-[2rem] border-2 border-ink bg-[#d8e2dc] p-6 shadow-hard sm:p-10"><div className="grid items-center gap-8 lg:grid-cols-[1fr_.8fr]"><div><p className="text-[10px] font-black uppercase tracking-[.2em] text-orange">La pieza que fue</p><h2 className="mt-3 max-w-xl font-display text-5xl font-black leading-[.9] tracking-[-.07em]">Una ciudad también puede vivir en tu pared.</h2><p className="mt-5 max-w-lg text-base font-medium leading-relaxed text-ink/65">El cuadro de pared convierte la pieza de la ciudad que visitaste en un objeto con historia. Lisboa, Kyoto, Algarve o la próxima parada.</p><button type="button" onClick={() => addPack(packs.find((pack) => pack.id === "wall")!)} className="mt-7 flex items-center gap-2 rounded-xl border-2 border-ink bg-orange px-5 py-3 text-sm font-black shadow-hard-sm">Descubrir el pack <ArrowRight size={17} /></button></div><div className="relative mx-auto w-full max-w-sm rotate-[4deg] rounded-2xl border-2 border-ink bg-cream p-3 shadow-hard"><img src="https://images.unsplash.com/photo-1470770841072-f978cf4d019e?auto=format&fit=crop&w=900&q=85" alt="Paisaje de destino" className="aspect-[4/3] w-full rounded-xl border-2 border-ink object-cover" /><div className="absolute -bottom-4 -left-4 rotate-[-9deg] rounded-lg border-2 border-ink bg-orange px-3 py-2 font-mono text-xs font-black shadow-hard-sm">LA CIUDAD QUE FUE</div></div></div></section><footer className="mt-14 flex flex-col justify-between gap-4 border-t-2 border-ink/15 pt-5 text-xs font-bold text-ink/55 sm:flex-row"><span>memento mundi · objetos para recordar mejor</span><span className="flex items-center gap-3"><Instagram size={15} /> Hecho para volver</span></footer></div><div className="fixed bottom-4 left-0 z-40 flex w-full justify-center px-4"><Dock items={dock} /></div>{showCart && <div className="fixed bottom-24 right-4 z-50 w-[calc(100%-2rem)] max-w-sm rounded-[1.5rem] border-2 border-ink bg-cream p-4 shadow-hard sm:right-8"><div className="flex items-center justify-between"><div><p className="text-[10px] font-black uppercase tracking-[.16em] text-orange">Tu kit</p><h2 className="font-display text-2xl font-black">{cart.length} pack{cart.length === 1 ? "" : "s"}</h2></div><button type="button" onClick={() => setShowCart(false)} aria-label="Cerrar kit" className="rounded-full border-2 border-ink bg-white/60 p-2"><X size={16} /></button></div><div className="mt-3 max-h-32 space-y-2 overflow-auto">{cart.map((item, index) => <div key={`${item.id}-${index}`} className="flex items-center justify-between border-b border-ink/15 pb-2 text-sm font-bold"><span>{item.name}</span><span>{item.price}</span></div>)}</div><div className="mt-4 flex items-center justify-between border-t-2 border-ink pt-3 font-black"><span>Total orientativo</span><span>{total} €</span></div><button type="button" onClick={handleLogin} className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border-2 border-ink bg-orange px-4 py-3 text-sm font-black shadow-hard-sm">{isAuthenticated ? "Continuar" : "Entrar para comprar"} <ArrowRight size={16} /></button></div>}</main>;
+
+  return (
+    <>
+      <IntroVideoHero
+        src="/memento_sticker.mp4"
+        isFinished={isIntroFinished}
+        onFinished={() => setIsIntroFinished(true)}
+      />
+
+      <motion.main
+        initial={{ opacity: 0 }}
+        animate={{ opacity: isIntroFinished ? 1 : 0 }}
+        transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+        className={`min-h-screen pb-28 bg-cream transition-opacity ${
+          !isIntroFinished ? "pointer-events-none select-none opacity-0" : ""
+        }`}
+      >
+        <div className="mx-auto max-w-7xl px-5 pb-12 pt-5 sm:px-8 lg:px-12">
+          <StoreHeader onHome={() => isAuthenticated ? setLocation("/") : setLocation("/store")} onLogin={handleLogin} loggedIn={isAuthenticated} />
+          
+          <section className="mt-14 grid gap-4 sm:grid-cols-3" id="how">
+            <div className="rounded-[1.4rem] border-2 border-ink bg-orange p-5 shadow-hard-sm">
+              <span className="font-mono text-3xl">01</span>
+              <h2 className="mt-8 font-display text-2xl font-black">Pega</h2>
+              <p className="mt-2 text-sm font-medium text-ink/70">Coloca tu pegatina en una postal, mochila o cuaderno.</p>
+            </div>
+            <div className="rounded-[1.4rem] border-2 border-ink bg-white/55 p-5 shadow-hard-sm">
+              <span className="font-mono text-3xl">02</span>
+              <h2 className="mt-8 font-display text-2xl font-black">Escanea</h2>
+              <p className="mt-2 text-sm font-medium text-ink/70">Abre Memento Mundi y desbloquea el scrapbook de esa coordenada.</p>
+            </div>
+            <div className="rounded-[1.4rem] border-2 border-ink bg-[#d8e2dc] p-5 shadow-hard-sm">
+              <span className="font-mono text-3xl">03</span>
+              <h2 className="mt-8 font-display text-2xl font-black">Vuelve</h2>
+              <p className="mt-2 text-sm font-medium text-ink/70">Añade fotos, invita a tu gente y deja que el recuerdo crezca.</p>
+            </div>
+          </section>
+
+          <section className="mt-20" id="packs">
+            <div className="flex flex-col justify-between gap-5 border-b-2 border-ink/15 pb-5 sm:flex-row sm:items-end">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[.2em] text-orange">Colección física</p>
+                <h2 className="mt-2 font-display text-5xl font-black leading-none tracking-[-.07em] sm:text-6xl">
+                  Elige cómo<br /><span className="text-orange">quieres volver.</span>
+                </h2>
+              </div>
+              <p className="max-w-xs text-sm font-medium leading-relaxed text-ink/60">
+                Todos los packs incluyen al menos una pegatina NFC + QR. Combina objetos según el viaje.
+              </p>
+            </div>
+            <div className="mt-7 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+              {packs.map((pack) => <PackCard key={pack.id} pack={pack} onAdd={addPack} />)}
+            </div>
+          </section>
+
+          <section className="mt-20 overflow-hidden rounded-[2rem] border-2 border-ink bg-[#d8e2dc] p-6 shadow-hard sm:p-10">
+            <div className="grid items-center gap-8 lg:grid-cols-[1fr_.8fr]">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[.2em] text-orange">La pieza que fue</p>
+                <h2 className="mt-3 max-w-xl font-display text-5xl font-black leading-[.9] tracking-[-.07em]">
+                  Una ciudad también puede vivir en tu pared.
+                </h2>
+                <p className="mt-5 max-w-lg text-base font-medium leading-relaxed text-ink/65">
+                  El cuadro de pared convierte la pieza de la ciudad que visitaste en un objeto con historia. Lisboa, Kyoto, Algarve o la próxima parada.
+                </p>
+                <button type="button" onClick={() => addPack(packs.find((pack) => pack.id === "wall")!)} className="mt-7 flex items-center gap-2 rounded-xl border-2 border-ink bg-orange px-5 py-3 text-sm font-black shadow-hard-sm">
+                  Descubrir el pack <ArrowRight size={17} />
+                </button>
+              </div>
+              <div className="relative mx-auto w-full max-w-sm rotate-[4deg] rounded-2xl border-2 border-ink bg-cream p-3 shadow-hard">
+                <img src="https://images.unsplash.com/photo-1470770841072-f978cf4d019e?auto=format&fit=crop&w=900&q=85" alt="Paisaje de destino" className="aspect-[4/3] w-full rounded-xl border-2 border-ink object-cover" />
+                <div className="absolute -bottom-4 -left-4 rotate-[-9deg] rounded-lg border-2 border-ink bg-orange px-3 py-2 font-mono text-xs font-black shadow-hard-sm">LA CIUDAD QUE FUE</div>
+              </div>
+            </div>
+          </section>
+
+          <footer className="mt-14 flex flex-col justify-between gap-4 border-t-2 border-ink/15 pt-5 text-xs font-bold text-ink/55 sm:flex-row">
+            <span>memento mundi · objetos para recordar mejor</span>
+            <span className="flex items-center gap-3"><Instagram size={15} /> Hecho para volver</span>
+          </footer>
+        </div>
+
+        <div className="fixed bottom-4 left-0 z-40 flex w-full justify-center px-4">
+          <Dock items={dock} />
+        </div>
+
+        {showCart && (
+          <div className="fixed bottom-24 right-4 z-50 w-[calc(100%-2rem)] max-w-sm rounded-[1.5rem] border-2 border-ink bg-cream p-4 shadow-hard sm:right-8">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[.16em] text-orange">Tu kit</p>
+                <h2 className="font-display text-2xl font-black">{cart.length} pack{cart.length === 1 ? "" : "s"}</h2>
+              </div>
+              <button type="button" onClick={() => setShowCart(false)} aria-label="Cerrar kit" className="rounded-full border-2 border-ink bg-white/60 p-2"><X size={16} /></button>
+            </div>
+            <div className="mt-3 max-h-32 space-y-2 overflow-auto">
+              {cart.map((item, index) => (
+                <div key={`${item.id}-${index}`} className="flex items-center justify-between border-b border-ink/15 pb-2 text-sm font-bold">
+                  <span>{item.name}</span>
+                  <span>{item.price}</span>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 flex items-center justify-between border-t-2 border-ink pt-3 font-black">
+              <span>Total orientativo</span>
+              <span>{total} €</span>
+            </div>
+            <button type="button" onClick={handleLogin} className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border-2 border-ink bg-orange px-4 py-3 text-sm font-black shadow-hard-sm">
+              {isAuthenticated ? "Continuar" : "Entrar para comprar"} <ArrowRight size={16} />
+            </button>
+          </div>
+        )}
+      </motion.main>
+    </>
+  );
+}
 }
