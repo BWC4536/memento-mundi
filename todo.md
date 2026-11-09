@@ -1,9 +1,9 @@
 
-# Plan: Hero visual minimalista y scroll ultra fluido
-- [x] Revisar la referencia visual de Organimo y adaptar solo el principio de interacción, no su contenido.
-- [x] Eliminar todo el texto del hero de pegatina y dejar una escena visual limpia.
-- [x] Hacer el scrub más fluido con interpolación y capas de profundidad.
-- [x] Mantener reversibilidad al subir, responsive, movimiento reducido y continuidad hacia packs.
-- [x] Validar screenshots, tests y build; guardar checkpoint.
+# Plan: Hero de vídeo puro y recorrido bloqueado hasta el despegado
+- [x] Eliminar fondo decorativo, glow, barra y cualquier overlay del hero.
+- [x] Mantener únicamente el vídeo centrado como protagonista.
+- [x] Aumentar el tramo sticky para que los packs no aparezcan antes del final.
+- [x] Ajustar la interpolación para que el seguimiento sea más fluido y reversible.
+- [x] Verificar desktop/móvil, scroll completo, tests y build; guardar checkpoint.
 
-Validación de suavidad: al saltar al 62% del recorrido el vídeo pasó por 2.34s, 4.32s, 4.92s y 4.96s antes de asentarse; al volver arriba regresó a 0.23s y continúa hasta el inicio.
+Prueba manual: al 72% del recorrido el vídeo estaba en 7.02s; al 86% llegó a 8s y la sección no liberó los packs antes de completar el despegado; al volver arriba regresó a 0s.

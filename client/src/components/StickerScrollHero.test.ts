@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolveStickerProgress } from "./StickerScrollHero";
+import { mapScrollToStickerProgress, resolveStickerProgress } from "./StickerScrollHero";
 
 describe("StickerScrollHero progress", () => {
   it("clamps scroll progress to the video range", () => {
@@ -10,5 +10,10 @@ describe("StickerScrollHero progress", () => {
 
   it("freezes the animation at its attached state when motion is reduced", () => {
     expect(resolveStickerProgress(0.8, true)).toBe(0);
+  });
+
+  it("finishes the video before the sticky section releases", () => {
+    expect(mapScrollToStickerProgress(0.41, false)).toBe(0.5);
+    expect(mapScrollToStickerProgress(0.82, false)).toBe(1);
   });
 });
