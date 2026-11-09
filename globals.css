@@ -1,0 +1,19 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --brand-cream: #EAE7DA;
+  --brand-navy: #0B2130;
+  --brand-orange: #FA9223;
+  --brand-turquoise: #5CA4A4;
+  --brand-coral: #FFB4AD;
+}
+
+@layer base {
+  body {
+    background-color: #EAE7DA;
+    color: #0B2130;
+  }
+}
+
