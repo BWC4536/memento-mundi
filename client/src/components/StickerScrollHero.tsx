@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
 
 const STICKER_VIDEO = "/memento_sticker.mp4";
-// Finaliza el recorrido del vídeo al 85% de la sección para dar paso fluido a los packs
-const VIDEO_FINISH_SCROLL = 0.85;
+// Al alcanzar el 60% del scroll de la sección, el vídeo ya ha completado el 100% del despegado
+const VIDEO_FINISH_SCROLL = 0.60;
 
 export const resolveStickerProgress = (value: number, reducedMotion: boolean) =>
   reducedMotion ? 0 : Math.max(0, Math.min(1, value));
@@ -15,7 +15,7 @@ export default function StickerScrollHero() {
   const sectionRef = useRef<HTMLElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const frameRef = useRef<number | null>(null);
-  const durationRef = useRef(8);
+  const durationRef = useRef(8.0);
   const targetProgressRef = useRef(0);
   const displayProgressRef = useRef(0);
   const [progress, setProgress] = useState(0);
@@ -29,35 +29,44 @@ export default function StickerScrollHero() {
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     setReducedMotion(reduce);
 
-    // Renderiza el primer frame de inmediato
-    const initVideo = () => {
-      durationRef.current = Number.isFinite(video.duration) && video.duration > 0 ? video.duration : 8;
+    const initDuration = () => {
+      if (Number.isFinite(video.duration) && video.duration > 0) {
+        durationRef.current = video.duration;
+      }
+      // Forzar carga del primer frame
       video.currentTime = 0.001;
     };
 
     if (video.readyState >= 1) {
-      initVideo();
+      initDuration();
     } else {
-      video.addEventListener("loadedmetadata", initVideo, { once: true });
+      video.addEventListener("loadedmetadata", initDuration, { once: true });
     }
 
-    // Interpolación suave (Lerp) para 60fps constantes
+    // Interpolación suave y rápida (Lerp) para fluidez a 60 FPS
     const animateToTarget = () => {
       frameRef.current = null;
       const current = displayProgressRef.current;
       const target = targetProgressRef.current;
       const distance = target - current;
 
-      // Factor 0.28: el doble de reactivo y rápido
-      const next = Math.abs(distance) < 0.0003 ? target : current + distance * 0.28;
+      let next: number;
+      if (Math.abs(distance) < 0.002) {
+        next = target;
+      } else {
+        next = current + distance * 0.32;
+      }
+
       displayProgressRef.current = next;
       setProgress(next);
 
       if (video.readyState >= 1) {
-        video.currentTime = next * durationRef.current;
+        // Capping a duration - 0.04s asegura que el último frame se muestre completo sin pantalla en blanco
+        const maxTime = Math.max(0, durationRef.current - 0.04);
+        video.currentTime = Math.min(maxTime, Math.max(0.001, next * durationRef.current));
       }
 
-      if (Math.abs(target - next) >= 0.0003) {
+      if (Math.abs(target - next) >= 0.001) {
         frameRef.current = requestAnimationFrame(animateToTarget);
       }
     };
@@ -71,8 +80,7 @@ export default function StickerScrollHero() {
     const syncTarget = () => {
       const rect = section.getBoundingClientRect();
       const scrollRange = Math.max(section.offsetHeight - window.innerHeight, 1);
-      // Cuando rect.top baja (scroll down), rawProgress sube de 0 a 1
-      // Cuando rect.top sube (scroll up), rawProgress baja de 1 a 0 (REVERSE)
+      // Al bajar, avanza de 0 a 1. Al subir, retrocede de 1 a 0 (REVERSE exacto)
       const rawProgress = Math.max(0, Math.min(1, -rect.top / scrollRange));
       targetProgressRef.current = mapScrollToStickerProgress(rawProgress, reduce);
       queueAnimation();
@@ -91,27 +99,18 @@ export default function StickerScrollHero() {
     };
   }, []);
 
-  // Animación 3D sutil inspirada en organimo
-  const tilt = reducedMotion ? 0 : (1 - progress) * 2;
-  const lift = reducedMotion ? 0 : (1 - progress) * 6;
-  const scale = reducedMotion ? 1 : 0.98 + progress * 0.02;
-  const hintOpacity = Math.max(0, 1 - progress * 6);
+  const hintOpacity = Math.max(0, 1 - progress * 5);
 
   return (
-    // Altura 160vh: el doble de rápida que 320vh
+    // Altura 200vh optimizada: el scroll es el doble de rápido y el vídeo termina garantizado
     <section
       ref={sectionRef}
-      className="relative h-[160vh] bg-cream"
-      aria-label="Animación interactiva de la pegatina Memento Mundi"
+      className="relative h-[200vh] w-full bg-[#EAE7DA]"
+      aria-label="Animación interactiva a pantalla completa de la pegatina Memento Mundi"
     >
-      <div className="sticky top-0 flex h-screen items-center justify-center overflow-hidden bg-cream px-4 py-8">
-        <div
-          className="sticker-scroll-layer relative flex items-center justify-center w-full max-w-[1100px]"
-          style={{
-            transform: `translate3d(0, ${lift}px, 0) rotateX(${tilt}deg) rotateY(${-tilt * 0.4}deg) scale(${scale})`,
-            transformStyle: "preserve-3d",
-          }}
-        >
+      <div className="sticky top-0 flex h-screen h-[100dvh] w-full items-center justify-center overflow-hidden bg-[#EAE7DA]">
+        {/* Contenedor del vídeo en pantalla completa 100% responsive */}
+        <div className="relative h-full w-full flex items-center justify-center">
           <video
             ref={videoRef}
             src={STICKER_VIDEO}
@@ -119,19 +118,19 @@ export default function StickerScrollHero() {
             playsInline
             preload="auto"
             aria-label="Pegatina Memento Mundi despegándose con scroll"
-            className="block max-h-[82vh] w-full object-contain mx-auto select-none pointer-events-none"
+            className="h-full w-full object-cover select-none pointer-events-none"
           />
         </div>
 
-        {/* Guía sutil que desaparece al hacer scroll y reaparece al volver arriba */}
+        {/* Indicador sutil de scroll: solo visible al inicio, desaparece de inmediato al scrollear */}
         <div
           style={{ opacity: hintOpacity }}
-          className="pointer-events-none absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 transition-opacity duration-200"
+          className="pointer-events-none absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1.5 transition-opacity duration-200"
         >
-          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-ink/50">
+          <span className="rounded-full border border-ink/20 bg-cream/80 px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-ink/60 backdrop-blur-sm shadow-sm">
             Scroll para despegar
           </span>
-          <ChevronDown size={14} className="animate-bounce text-orange" />
+          <ChevronDown size={15} className="animate-bounce text-orange" />
         </div>
       </div>
     </section>
