@@ -3,6 +3,14 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+@font-face {
+  font-family: "Briska";
+  src: url("https://drive.google.com/uc?export=download&id=1p2VVe_CI3QIhrn_DM16RC2zIAOavpfdP") format("opentype");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
 :root {
   --background: #eae7da;
   --foreground: #0b2130;
@@ -23,7 +31,7 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: "Cormorant Garamond", Georgia, serif;
-  --font-display: "Cormorant Garamond", Georgia, serif;
+  --font-display: "Briska", "Cormorant Garamond", Georgia, serif;
   --font-brand: "Brasika Display - Trial", Georgia, serif;
   --font-mono: "Cormorant Garamond", Georgia, serif;
   --shadow-hard: 5px 5px 0 #0b2130;
@@ -33,8 +41,8 @@
 * { box-sizing: border-box; font-synthesis: none; }
 html { scroll-behavior: smooth; }
 body { margin: 0; min-width: 320px; background: var(--background); color: var(--foreground); font-family: "Cormorant Garamond", Georgia, serif; font-weight: 500; font-synthesis: none; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
-h1, h2, h3, h4, h5, h6 { font-synthesis: none; }
-.font-display { font-family: "Cormorant Garamond", Georgia, serif !important; font-weight: 600 !important; font-synthesis: none !important; line-height: .94; letter-spacing: -.025em; }
+h1, h2, h3, h4, h5, h6 { font-family: "Briska", "Cormorant Garamond", Georgia, serif !important; font-weight: 400 !important; font-synthesis: none !important; line-height: 1.02; }
+.font-display { font-family: "Briska", "Cormorant Garamond", Georgia, serif !important; font-weight: 400 !important; font-synthesis: none !important; line-height: .94; letter-spacing: -.025em; }
 .font-brand { font-family: "Brasika Display - Trial", Georgia, serif !important; font-weight: 400 !important; font-synthesis: none !important; }
 .font-mono { font-family: "Cormorant Garamond", Georgia, serif !important; font-weight: 500 !important; font-variant-numeric: lining-nums tabular-nums; font-feature-settings: "lnum" 1, "tnum" 1; }
 button, input, textarea, select { font-family: "Cormorant Garamond", Georgia, serif; font-synthesis: none; }
