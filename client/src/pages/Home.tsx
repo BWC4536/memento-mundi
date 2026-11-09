@@ -9,6 +9,7 @@ import InfiniteCanvasEditor, { type CanvasElement } from "@/components/InfiniteC
 import QrScannerDialog from "@/components/QrScannerDialog";
 import ScrapbookPhotoView from "@/components/ScrapbookPhotoView";
 import { demoScrapbooks, type Scrapbook } from "@/lib/scrapbooks";
+import StorePage from "@/pages/StorePage";
 
 type Modal = "create" | "share" | "invite" | "scan" | "editor" | null;
 type EditorTab = "marcos" | "fotos" | "decoracion";
@@ -82,6 +83,8 @@ export default function Home() {
     const created: Scrapbook = { ...demoScrapbooks[0], id: `new-${Date.now()}`, title: newTitle.trim(), description: "Una nueva historia por llenar.", photos: 0, invited: 0, updated: "ahora", cover: demoScrapbooks[0].cover };
     setScrapbooks((items) => [created, ...items]); setNewTitle(""); setModal(null); setSelected(created);
   };
+
+  if (!isAuthenticated) return <StorePage />;
 
   if (selected) return <><ScrapbookPhotoView scrapbook={selected} elements={savedLayouts[selected.id]} onBack={() => { setSelected(null); setModal(null); }} onEdit={() => setModal("editor")} onScan={() => setModal("scan")} />{modal === "editor" && <Editor scrapbook={selected} initialElements={savedLayouts[selected.id]} onSave={(elements) => setSavedLayouts((current) => ({ ...current, [selected.id]: elements }))} onClose={() => setModal(null)} />}{modal === "scan" && <QrScannerDialog onClose={() => setModal(null)} onDetected={() => setModal("editor")} />}</>;
 
