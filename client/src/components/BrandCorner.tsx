@@ -1,9 +1,13 @@
 export default function BrandCorner() {
-  return <div className="pointer-events-none fixed left-3 top-3 z-[80] rounded-xl bg-cream/90 p-1.5 sm:left-5 sm:top-4">
+  return <div className="pointer-events-none fixed left-4 top-4 z-[80] w-32 sm:left-6 sm:top-5 sm:w-44">
     <img
-      src="/manus-storage/MEMENTO_LOGO_b74183cf.svg"
-      alt="Memento Mundi"
-      className="h-auto w-16 max-w-[22vw] drop-shadow-[2px_2px_0_rgba(234,231,218,.85)] sm:w-24"
+      src="/manus-storage/MEMENTO_FRASE_CROPPED_7d1f737d.png"
+      alt="Memento"
+      className="h-auto w-full"
     />
+    <div className="-mt-1 text-center">
+      <p className="font-display text-base leading-none text-orange sm:text-lg">mundi</p>
+      <p className="mt-1 font-mono text-[7px] font-black uppercase tracking-[.16em] text-ink/60 sm:text-[8px]">viaja. guarda. vuelve.</p>
+    </div>
   </div>;
 }
