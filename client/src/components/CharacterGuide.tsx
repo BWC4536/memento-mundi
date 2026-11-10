@@ -24,13 +24,13 @@ export default function CharacterGuide({
       initial={{ opacity: 0, scale: 0.95, y: 8 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
       transition={{ duration: 0.4, delay: 0.15 }}
-      className={`inline-flex items-end gap-3 sm:gap-4 ${
+      className={`inline-flex max-w-full items-end gap-3 sm:gap-4 ${
         position === "left" ? "flex-row-reverse" : "flex-row"
       } ${className}`}
       aria-label={`${name} dice: ${speech}`}
     >
       {/* Bocadillo de diálogo con estilo cómic editorial y sombra brutalista */}
-      <div className="relative max-w-[280px] sm:max-w-sm rounded-2xl border-2 border-ink bg-white/95 p-3 sm:p-4 shadow-hard-sm">
+      <div className="relative min-w-0 max-w-[280px] sm:max-w-sm rounded-2xl border-2 border-ink bg-white/95 p-3 sm:p-4 shadow-hard-sm">
         <div className="flex items-center gap-1.5 mb-1">
           <span className="h-2 w-2 rounded-full bg-orange animate-pulse" />
           <span className="font-brand text-[11px] font-black uppercase tracking-wider text-orange">

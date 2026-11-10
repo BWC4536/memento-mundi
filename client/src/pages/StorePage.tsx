@@ -4,7 +4,6 @@ import { useLocation } from "wouter";
 import { startLogin } from "@/const";
 import { useAuth } from "@/_core/hooks/useAuth";
 import StickerScrollHero from "@/components/StickerScrollHero";
-import NavigationDock from "@/components/NavigationDock";
 import CharacterGuide from "@/components/CharacterGuide";
 
 type ProductKind = "sticker" | "keyring" | "magnet" | "ornament" | "wall";
@@ -58,16 +57,16 @@ function PackCard({ pack, onAdd }: { pack: Pack; onAdd: (pack: Pack) => void }) 
         <div className="relative aspect-[1.25/1] overflow-hidden rounded-[1.2rem] border-2 border-ink bg-ink">
           <img src={pack.image} alt={pack.name} className="h-full w-full object-cover opacity-90 transition-transform duration-500 group-hover:scale-105" />
           <div className="absolute inset-0 bg-gradient-to-t from-ink/80 via-transparent to-transparent" />
-          <div className="absolute left-3 top-3 flex items-center gap-2">
+          <div className="absolute left-3 right-3 top-3 flex flex-wrap items-center gap-2">
             <span className="rounded-full border-2 border-ink bg-cream px-2.5 py-1 text-[10px] font-black uppercase tracking-wider">{pack.kicker}</span>
             {pack.badge && <span className="rounded-full border-2 border-ink bg-orange px-2.5 py-1 text-[10px] font-black uppercase tracking-wider">{pack.badge}</span>}
           </div>
-          <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between text-cream">
-            <div>
-              <p className="font-display text-2xl font-black leading-none">{pack.name}</p>
+          <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between gap-3 text-cream">
+            <div className="min-w-0">
+              <p className="font-display text-xl font-black leading-none break-words sm:text-2xl">{pack.name}</p>
               <p className="mt-1 text-xs font-bold text-cream/70">{pack.price} · envío incluido</p>
             </div>
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl border-2 border-ink bg-orange text-ink"><Package size={18} /></span>
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 border-ink bg-orange text-ink"><Package size={18} /></span>
           </div>
         </div>
         <div className="px-1 pb-1 pt-4">
@@ -211,12 +210,9 @@ export default function StorePage() {
         </footer>
       </div>
 
-      {/* Dock universal responsive con 5 botones */}
-      <NavigationDock accent="store" />
-
-      {/* Modal flotante del carrito */}
+      {/* Modal flotante del carrito: queda por encima del dock, sin taparlo */}
       {showCart && (
-        <div className="fixed bottom-24 right-4 z-50 w-[calc(100%-2rem)] max-w-sm rounded-[1.5rem] border-2 border-ink bg-cream p-4 shadow-hard sm:right-8">
+        <div className="fixed bottom-[5.5rem] right-3 z-50 max-h-[calc(100dvh-7rem)] w-[calc(100%-1.5rem)] max-w-sm overflow-y-auto rounded-[1.5rem] border-2 border-ink bg-cream p-4 shadow-hard sm:bottom-28 sm:right-8">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-[10px] font-black uppercase tracking-[.16em] text-orange">Tu kit</p>
@@ -226,9 +222,9 @@ export default function StorePage() {
           </div>
           <div className="mt-3 max-h-32 space-y-2 overflow-auto">
             {cart.map((item, index) => (
-              <div key={`${item.id}-${index}`} className="flex items-center justify-between border-b border-ink/15 pb-2 text-sm font-bold">
-                <span>{item.name}</span>
-                <span>{item.price}</span>
+              <div key={`${item.id}-${index}`} className="flex items-center justify-between gap-3 border-b border-ink/15 pb-2 text-sm font-bold">
+                <span className="min-w-0 truncate">{item.name}</span>
+                <span className="shrink-0">{item.price}</span>
               </div>
             ))}
           </div>

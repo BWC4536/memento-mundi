@@ -1,47 +1,37 @@
-import { useEffect, useState } from "react";
+import { Link } from "wouter";
 
+/**
+ * Lockup de marca arriba a la izquierda.
+ * Va en `absolute` (sin ancestro posicionado), así forma parte del flujo de la página:
+ * se ve arriba del todo y se va con el scroll en vez de quedarse fijo.
+ */
 export default function BrandCorner() {
-  const [isAtTop, setIsAtTop] = useState(true);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      // Solo se muestra cuando estás arriba del todo (menos de 30px de scroll)
-      setIsAtTop(window.scrollY < 30);
-    };
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    handleScroll();
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
   return (
-    <aside
-      aria-label="Logo Memento Mundi"
-      className={`fixed left-3 top-3 z-[80] flex items-center gap-2.5 transition-all duration-300 sm:left-6 sm:top-5 ${
-        isAtTop
-          ? "opacity-100 translate-y-0 pointer-events-auto"
-          : "opacity-0 -translate-y-4 pointer-events-none"
-      }`}
+    <Link
+      href="/"
+      aria-label="Memento Mundi, ir a inicio"
+      className="absolute left-3 top-3 z-[80] flex max-w-[calc(100vw-6rem)] items-center gap-2 sm:left-6 sm:top-5 sm:gap-3"
     >
       <img
         src="/MEMENTO_LOGO.svg"
-        alt="Logo Memento"
-        className="h-9 w-9 sm:h-12 sm:w-12 object-contain drop-shadow-sm select-none"
+        alt=""
+        className="h-10 w-10 shrink-0 select-none object-contain drop-shadow-sm sm:h-14 sm:w-14"
+        draggable={false}
       />
-      <div className="flex flex-col">
-        <div className="flex items-baseline gap-1.5">
+      <span className="flex min-w-0 flex-col">
+        <span className="flex items-end gap-1.5">
           <img
             src="/MEMENTO_FRASE.svg"
             alt="Memento"
-            className="h-5 sm:h-7 w-auto object-contain select-none"
+            className="h-5 w-auto min-w-0 select-none object-contain sm:h-7"
+            draggable={false}
           />
-          <span className="font-brand text-base sm:text-xl font-black text-orange leading-none">
-            mundi
-          </span>
-        </div>
-        <span className="font-mono text-[7px] sm:text-[8px] font-black uppercase tracking-[0.16em] text-ink/70">
+          <span className="font-brand text-lg font-black leading-none text-orange sm:text-2xl">mundi</span>
+        </span>
+        <span className="mt-1 font-mono text-[7px] font-black uppercase tracking-[0.16em] text-ink/70 sm:text-[8px]">
           viaja. guarda. vuelve.
         </span>
-      </div>
-    </aside>
+      </span>
+    </Link>
   );
 }
