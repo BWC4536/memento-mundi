@@ -102,20 +102,24 @@ export default function StorePage() {
   const addPack = (pack: Pack) => { setCart((current) => [...current, pack]); setShowCart(true); };
 
   return (
-    <main className="min-h-screen pb-32 bg-[#EAE7DA] relative overflow-x-hidden">
-      {/* Cabecera superior accesible */}
-      <div className="absolute top-0 left-0 right-0 z-30 mx-auto max-w-7xl px-4 pt-4 sm:px-8 sm:pt-6 pointer-events-auto">
-        <StoreHeader onLogin={handleLogin} loggedIn={isAuthenticated} />
-      </div>
-
-      {/* Hero Interactivo Reversible a Pantalla Completa (Estilo Organimo) */}
+    <main className="relative min-h-screen overflow-x-hidden bg-[#EAE7DA] pb-32">
+      {/* Intro a pantalla completa: bloquea el scroll, el vídeo sigue al gesto y se funde al terminar */}
       <StickerScrollHero />
 
-      {/* Contenido principal de la tienda */}
-      <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-8 lg:px-12 pt-6">
+      {/* Contenido principal de la tienda (empieza arriba del todo cuando la intro se va) */}
+      <div className="relative z-10 mx-auto max-w-7xl px-4 pt-24 sm:px-8 sm:pt-28 lg:px-12">
+        <StoreHeader onLogin={handleLogin} loggedIn={isAuthenticated} />
+
+        <section className="mt-10 sm:mt-14">
+          <p className="text-[10px] font-black uppercase tracking-[.2em] text-orange">Memento Mundi · tienda</p>
+          <h1 className="mt-2 max-w-3xl break-words font-display text-5xl font-black leading-[.9] tracking-[-.06em] sm:text-7xl">
+            Objetos para<br /><span className="text-orange">volver.</span>
+          </h1>
+        </section>
+
         
         {/* Pasos de uso */}
-        <section className="grid gap-4 sm:grid-cols-3" id="how">
+        <section className="mt-10 grid gap-4 sm:grid-cols-3" id="how">
           <div className="rounded-[1.4rem] border-2 border-ink bg-orange p-5 shadow-hard-sm">
             <span className="font-mono text-3xl">01</span>
             <h2 className="mt-6 font-display text-2xl font-black">Pega</h2>
@@ -138,9 +142,9 @@ export default function StorePage() {
           <div className="flex flex-col justify-between gap-6 border-b-2 border-ink/15 pb-6 lg:flex-row lg:items-end">
             <div>
               <p className="text-[10px] font-black uppercase tracking-[.2em] text-orange">Colección física</p>
-              <h1 className="mt-2 font-display text-4xl sm:text-6xl font-black leading-none tracking-[-.05em] break-words">
+              <h2 className="mt-2 break-words font-display text-4xl font-black leading-none tracking-[-.05em] sm:text-6xl">
                 Elige cómo<br /><span className="text-orange">quieres volver.</span>
-              </h1>
+              </h2>
               <p className="mt-4 max-w-md text-sm font-medium leading-relaxed text-ink/65">
                 Todos los packs incluyen al menos una pegatina NFC + QR. Combina objetos según tu tipo de viaje.
               </p>
