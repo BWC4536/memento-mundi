@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
+import { STICKER_FRAME_SETS } from "@/lib/sticker-frames.generated";
 
 // Píxeles de scroll (rueda, dedo o teclado) necesarios para ver la animación entera: ~5 s de gesto continuo.
 export const INTRO_SCROLL_PX = 2400;
@@ -11,16 +12,12 @@ const FADE_MS = 900;
 const PRELOAD_CONCURRENCY = 6;
 
 /**
- * La animación se sirve como secuencia de imágenes (generada con ffmpeg a partir de memento_sticker.mp4):
+ * La animación se sirve como secuencia de imágenes generada con scripts/build-sticker-frames.sh:
  * buscar dentro de un vídeo con `currentTime` es lento y no sigue al scroll, pero pintar una imagen ya
  * decodificada en un canvas es inmediato. Es el mismo sistema que usan las webs con animaciones 3D.
+ * Hay una versión horizontal (PC) y otra vertical (móvil) para que la palabra se vea entera en ambas.
  */
-const FRAME_SETS = {
-  // Resolución nativa del vídeo, 24 fps.
-  lg: { dir: "/sticker-frames/lg", count: 192 },
-  // Versión ligera para móvil, 12 fps.
-  sm: { dir: "/sticker-frames/sm", count: 96 },
-} as const;
+type FrameSetName = keyof typeof STICKER_FRAME_SETS;
 
 export const resolveStickerProgress = (value: number, reducedMotion: boolean) =>
   reducedMotion ? 0 : Math.max(0, Math.min(1, value));
@@ -35,11 +32,39 @@ export const frameIndexFor = (progress: number, count: number) =>
 
 type Phase = "intro" | "leaving" | "done";
 
-const frameUrl = (set: keyof typeof FRAME_SETS, index: number) =>
-  `${FRAME_SETS[set].dir}/${String(index + 1).padStart(3, "0")}.webp`;
+/**
+ * Al acabar la intro, la inercia de la rueda / trackpad / dedo sigue enviando scroll y bajaría la tienda
+ * de golpe. Se ignora ese scroll hasta que el gesto se detiene (`quietMs` sin eventos, como mínimo
+ * `minMs`, como máximo `maxMs`). Devuelve una función para cancelarlo y una promesa que se cumple al parar.
+ */
+function absorbScrollMomentum({ minMs, quietMs = 300, maxMs = 3000 }: { minMs: number; quietMs?: number; maxMs?: number }) {
+  let quietTimer = 0;
+  let resolveDone: () => void = () => undefined;
+  const done = new Promise<void>((resolve) => { resolveDone = resolve; });
+  const stop = () => {
+    window.clearTimeout(quietTimer);
+    window.clearTimeout(maxTimer);
+    window.removeEventListener("wheel", block);
+    window.removeEventListener("touchmove", block);
+    resolveDone();
+  };
+  const block = (event: Event) => {
+    if (event.cancelable) event.preventDefault();
+    window.clearTimeout(quietTimer);
+    quietTimer = window.setTimeout(stop, quietMs);
+  };
+  const maxTimer = window.setTimeout(stop, maxMs);
+  quietTimer = window.setTimeout(stop, Math.max(minMs, quietMs));
+  window.addEventListener("wheel", block, { passive: false });
+  window.addEventListener("touchmove", block, { passive: false });
+  return { done, cancel: stop };
+}
 
-const pickSet = (): keyof typeof FRAME_SETS =>
-  window.matchMedia("(pointer: coarse)").matches || window.innerWidth < 768 ? "sm" : "lg";
+const frameUrl = (set: FrameSetName, index: number) =>
+  `${STICKER_FRAME_SETS[set].dir}/${String(index + 1).padStart(3, "0")}.webp`;
+
+// La orientación manda: un móvil en horizontal usa la versión horizontal y viceversa.
+const pickSet = (): FrameSetName => (window.innerHeight > window.innerWidth ? "portrait" : "landscape");
 
 /**
  * Intro a pantalla completa de la tienda.
@@ -53,22 +78,31 @@ export default function StickerScrollHero({ onFinished }: { onFinished?: () => v
   );
   const [started, setStarted] = useState(false);
 
-  // Bloqueo del scroll de la página mientras dura la intro.
+  // Bloqueo del scroll de la página mientras dura la intro (incluido el fundido y la inercia final).
+  const locked = phase !== "done";
   useEffect(() => {
-    if (phase === "done") return;
+    if (!locked) return;
     const html = document.documentElement;
     const body = document.body;
-    const previous = { html: html.style.overflow, body: body.style.overflow, overscroll: html.style.overscrollBehavior };
+    const previous = {
+      html: html.style.overflow,
+      body: body.style.overflow,
+      overscroll: html.style.overscrollBehavior,
+      touchAction: html.style.touchAction,
+    };
     html.style.overflow = "hidden";
     body.style.overflow = "hidden";
     html.style.overscrollBehavior = "none";
+    html.style.touchAction = "none";
     window.scrollTo(0, 0);
     return () => {
       html.style.overflow = previous.html;
       body.style.overflow = previous.body;
       html.style.overscrollBehavior = previous.overscroll;
+      html.style.touchAction = previous.touchAction;
+      window.scrollTo(0, 0);
     };
-  }, [phase]);
+  }, [locked]);
 
   // Precarga de la secuencia, scrub con el gesto y pintado en canvas.
   useEffect(() => {
@@ -78,7 +112,7 @@ export default function StickerScrollHero({ onFinished }: { onFinished?: () => v
     if (!canvas || !ctx) return;
 
     const set = pickSet();
-    const count = FRAME_SETS[set].count;
+    const count = STICKER_FRAME_SETS[set].count;
     const frames: (HTMLImageElement | null)[] = new Array(count).fill(null);
     let readyUpTo = -1; // último índice cargado sin huecos por delante
     let loadingDone = false;
@@ -218,15 +252,20 @@ export default function StickerScrollHero({ onFinished }: { onFinished?: () => v
     };
   }, [phase]);
 
-  // Fundido: cuando termina, se desmonta la capa y la tienda queda arriba del todo.
+  // Fundido: la capa se desvanece y, cuando además el gesto se ha parado, se libera la página arriba del todo.
   useEffect(() => {
     if (phase !== "leaving") return;
-    const timer = window.setTimeout(() => {
+    let cancelled = false;
+    const momentum = absorbScrollMomentum({ minMs: FADE_MS });
+    momentum.done.then(() => {
+      if (cancelled) return;
       setPhase("done");
-      window.scrollTo(0, 0);
       onFinished?.();
-    }, FADE_MS);
-    return () => window.clearTimeout(timer);
+    });
+    return () => {
+      cancelled = true;
+      momentum.cancel();
+    };
   }, [phase, onFinished]);
 
   if (phase === "done") return null;
@@ -236,7 +275,7 @@ export default function StickerScrollHero({ onFinished }: { onFinished?: () => v
       role="presentation"
       aria-label="Intro: pegatina Memento Mundi despegándose con el scroll"
       style={{ transition: `opacity ${FADE_MS}ms ease` }}
-      className={`fixed inset-0 z-[90] overflow-hidden bg-[#EAE7DA] ${phase === "leaving" ? "pointer-events-none opacity-0" : "opacity-100"}`}
+      className={`fixed inset-0 z-[90] overflow-hidden bg-[#DEDACC] ${phase === "leaving" ? "pointer-events-none opacity-0" : "opacity-100"}`}
     >
       <canvas ref={canvasRef} className="pointer-events-none absolute inset-0 h-full w-full select-none" />
 
