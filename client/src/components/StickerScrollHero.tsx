@@ -1,18 +1,26 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
 
-const STICKER_VIDEO = "/memento_sticker.mp4";
-// Píxeles de scroll (rueda, dedo o teclado) necesarios para ver el vídeo entero: ~5 s de gesto continuo.
+// Píxeles de scroll (rueda, dedo o teclado) necesarios para ver la animación entera: ~5 s de gesto continuo.
 export const INTRO_SCROLL_PX = 2400;
 // Cuánto se acerca el progreso visible al objetivo en cada frame (0-1). Más alto = más directo.
-const SMOOTHING = 0.22;
-// Duración del fundido a la página una vez termina el vídeo.
+const SMOOTHING = 0.2;
+// Duración del fundido a la página una vez termina la animación.
 const FADE_MS = 900;
-// Velocidad de reproducción mientras se extraen los fotogramas (más rápido = lista antes).
-const CAPTURE_RATE = 2;
-// Fotogramas por segundo de vídeo que se guardan y tamaño máximo de cada uno.
-const DESKTOP_PROFILE = { fps: 20, maxSide: 1024, maxFrames: 160 };
-const MOBILE_PROFILE = { fps: 12, maxSide: 720, maxFrames: 110 };
+// Descargas simultáneas al precargar la secuencia.
+const PRELOAD_CONCURRENCY = 6;
+
+/**
+ * La animación se sirve como secuencia de imágenes (generada con ffmpeg a partir de memento_sticker.mp4):
+ * buscar dentro de un vídeo con `currentTime` es lento y no sigue al scroll, pero pintar una imagen ya
+ * decodificada en un canvas es inmediato. Es el mismo sistema que usan las webs con animaciones 3D.
+ */
+const FRAME_SETS = {
+  // Resolución nativa del vídeo, 24 fps.
+  lg: { dir: "/sticker-frames/lg", count: 192 },
+  // Versión ligera para móvil, 12 fps.
+  sm: { dir: "/sticker-frames/sm", count: 96 },
+} as const;
 
 export const resolveStickerProgress = (value: number, reducedMotion: boolean) =>
   reducedMotion ? 0 : Math.max(0, Math.min(1, value));
@@ -21,94 +29,21 @@ export const resolveStickerProgress = (value: number, reducedMotion: boolean) =>
 export const advanceIntroProgress = (current: number, deltaPx: number, totalPx = INTRO_SCROLL_PX) =>
   Math.max(0, Math.min(1, current + deltaPx / totalPx));
 
+/** Índice del fotograma que corresponde a un progreso 0-1. */
+export const frameIndexFor = (progress: number, count: number) =>
+  Math.max(0, Math.min(count - 1, Math.round(progress * (count - 1))));
+
 type Phase = "intro" | "leaving" | "done";
-type Frame = { time: number; image: HTMLCanvasElement };
-type Profile = typeof DESKTOP_PROFILE;
 
-const pickProfile = (): Profile =>
-  window.matchMedia("(pointer: coarse)").matches || window.innerWidth < 768 ? MOBILE_PROFILE : DESKTOP_PROFILE;
+const frameUrl = (set: keyof typeof FRAME_SETS, index: number) =>
+  `${FRAME_SETS[set].dir}/${String(index + 1).padStart(3, "0")}.webp`;
 
-/**
- * Extrae fotogramas del vídeo a canvases pequeños. Buscar en un vídeo con `currentTime` es lento
- * (hay que decodificar desde el último keyframe), así que durante el scroll no llegaría a pintar nada.
- * Con los fotogramas ya extraídos, cada frame se dibuja al instante.
- */
-async function captureFrames(
-  src: string,
-  profile: Profile,
-  onFrame: (frame: Frame, duration: number) => void,
-  isCancelled: () => boolean,
-): Promise<void> {
-  const video = document.createElement("video");
-  video.muted = true;
-  video.playsInline = true;
-  video.preload = "auto";
-  video.src = src;
-
-  await new Promise<void>((resolve, reject) => {
-    video.addEventListener("loadedmetadata", () => resolve(), { once: true });
-    video.addEventListener("error", () => reject(new Error("No se pudo cargar el vídeo")), { once: true });
-  });
-  if (isCancelled()) return;
-
-  const duration = video.duration;
-  const scale = Math.min(1, profile.maxSide / Math.max(video.videoWidth, video.videoHeight));
-  const width = Math.max(1, Math.round(video.videoWidth * scale));
-  const height = Math.max(1, Math.round(video.videoHeight * scale));
-  const step = Math.max(1 / profile.fps, duration / profile.maxFrames);
-
-  const grab = (time: number) => {
-    const canvas = document.createElement("canvas");
-    canvas.width = width;
-    canvas.height = height;
-    canvas.getContext("2d")?.drawImage(video, 0, 0, width, height);
-    onFrame({ time, image: canvas }, duration);
-  };
-
-  const played = await video.play().then(() => true).catch(() => false);
-  if (isCancelled()) { video.pause(); return; }
-
-  if (played) {
-    // Reproducción acelerada: se guarda un fotograma cada `step` segundos de vídeo.
-    video.playbackRate = CAPTURE_RATE;
-    await new Promise<void>((resolve) => {
-      let nextTime = 0;
-      const hasFrameCallback = "requestVideoFrameCallback" in video;
-      const onPresented = (_now: number, meta?: { mediaTime: number }) => {
-        if (isCancelled()) { video.pause(); resolve(); return; }
-        const time = meta?.mediaTime ?? video.currentTime;
-        if (time >= nextTime - 0.001) {
-          nextTime = time + step;
-          grab(time);
-        }
-        if (video.ended) { resolve(); return; }
-        schedule();
-      };
-      const schedule = () => {
-        if (hasFrameCallback) {
-          (video as HTMLVideoElement & { requestVideoFrameCallback: (cb: typeof onPresented) => void }).requestVideoFrameCallback(onPresented);
-        } else {
-          requestAnimationFrame((now) => onPresented(now));
-        }
-      };
-      video.addEventListener("ended", () => resolve(), { once: true });
-      schedule();
-    });
-    return;
-  }
-
-  // Si el navegador no deja reproducir (p. ej. ahorro de batería), se buscan los fotogramas uno a uno.
-  for (let time = 0; time < duration; time += step) {
-    if (isCancelled()) return;
-    video.currentTime = Math.min(time, Math.max(0, duration - 0.05));
-    await new Promise<void>((resolve) => video.addEventListener("seeked", () => resolve(), { once: true }));
-    grab(time);
-  }
-}
+const pickSet = (): keyof typeof FRAME_SETS =>
+  window.matchMedia("(pointer: coarse)").matches || window.innerWidth < 768 ? "sm" : "lg";
 
 /**
  * Intro a pantalla completa de la tienda.
- * Bloquea el scroll de la página; la rueda, el dedo o el teclado mueven el vídeo hacia delante
+ * Bloquea el scroll de la página; la rueda, el dedo o el teclado mueven la animación hacia delante
  * y hacia atrás. Al llegar al final, se funde y deja la tienda arriba del todo.
  */
 export default function StickerScrollHero({ onFinished }: { onFinished?: () => void }) {
@@ -135,63 +70,48 @@ export default function StickerScrollHero({ onFinished }: { onFinished?: () => v
     };
   }, [phase]);
 
-  // Extracción de fotogramas, scrub con el gesto y pintado en canvas.
+  // Precarga de la secuencia, scrub con el gesto y pintado en canvas.
   useEffect(() => {
     if (phase !== "intro") return;
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext("2d");
     if (!canvas || !ctx) return;
 
-    const frames: Frame[] = [];
-    let duration = 0;
-    let captureDone = false;
+    const set = pickSet();
+    const count = FRAME_SETS[set].count;
+    const frames: (HTMLImageElement | null)[] = new Array(count).fill(null);
+    let readyUpTo = -1; // último índice cargado sin huecos por delante
+    let loadingDone = false;
     let target = 0;
     let shown = 0;
     let drawnIndex = -1;
     let frame: number | null = null;
     let finished = false;
     let cancelled = false;
-    let objectUrl: string | null = null;
     let lastTouchY: number | null = null;
 
-    // Hasta dónde se puede avanzar: solo lo que ya está extraído.
-    const readyProgress = () => {
-      if (captureDone) return 1;
-      if (!duration || frames.length === 0) return 0;
-      return frames[frames.length - 1].time / duration;
-    };
+    // Hasta dónde se puede avanzar: solo lo que ya está cargado.
+    const readyProgress = () => (loadingDone ? 1 : Math.max(0, readyUpTo) / (count - 1));
 
     const resizeCanvas = () => {
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       canvas.width = Math.round(window.innerWidth * dpr);
       canvas.height = Math.round(window.innerHeight * dpr);
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
       drawnIndex = -1;
       queueTick();
     };
 
     const draw = (index: number) => {
-      const image = frames[index]?.image;
+      const image = frames[index];
       if (!image) return;
       // Equivalente a object-fit: cover.
-      const scale = Math.max(canvas.width / image.width, canvas.height / image.height);
-      const w = image.width * scale;
-      const h = image.height * scale;
+      const scale = Math.max(canvas.width / image.naturalWidth, canvas.height / image.naturalHeight);
+      const w = image.naturalWidth * scale;
+      const h = image.naturalHeight * scale;
       ctx.drawImage(image, (canvas.width - w) / 2, (canvas.height - h) / 2, w, h);
       drawnIndex = index;
-    };
-
-    const indexFor = (progress: number) => {
-      if (frames.length === 0) return -1;
-      const time = progress * duration;
-      // Los fotogramas están ordenados por tiempo: se busca el más cercano.
-      let lo = 0;
-      let hi = frames.length - 1;
-      while (lo < hi) {
-        const mid = (lo + hi) >> 1;
-        if (frames[mid].time < time) lo = mid + 1; else hi = mid;
-      }
-      if (lo > 0 && Math.abs(frames[lo - 1].time - time) < Math.abs(frames[lo].time - time)) lo -= 1;
-      return lo;
     };
 
     const finish = () => {
@@ -204,10 +124,10 @@ export default function StickerScrollHero({ onFinished }: { onFinished?: () => v
       frame = null;
       const clampedTarget = Math.min(target, readyProgress());
       const distance = clampedTarget - shown;
-      shown = Math.abs(distance) < 0.0015 ? clampedTarget : shown + distance * SMOOTHING;
-      const index = indexFor(shown);
-      if (index !== drawnIndex) draw(index);
-      if (shown >= 1 && target >= 1 && captureDone) { finish(); return; }
+      shown = Math.abs(distance) < 0.001 ? clampedTarget : shown + distance * SMOOTHING;
+      const index = frameIndexFor(shown, count);
+      if (index !== drawnIndex && frames[index]) draw(index);
+      if (shown >= 1 && target >= 1 && loadingDone) { finish(); return; }
       if (shown !== clampedTarget || clampedTarget !== target) frame = requestAnimationFrame(tick);
     };
     const queueTick = () => { if (frame === null) frame = requestAnimationFrame(tick); };
@@ -229,7 +149,7 @@ export default function StickerScrollHero({ onFinished }: { onFinished?: () => v
       event.preventDefault();
       const y = event.touches[0]?.clientY;
       if (y === undefined || lastTouchY === null) return;
-      // El dedo recorre menos píxeles que la rueda: se amplifica para que el vídeo dure lo mismo.
+      // El dedo recorre menos píxeles que la rueda: se amplifica para que la animación dure lo mismo.
       move((lastTouchY - y) * 2.2);
       lastTouchY = y;
     };
@@ -242,6 +162,42 @@ export default function StickerScrollHero({ onFinished }: { onFinished?: () => v
       move(delta);
     };
 
+    // Precarga en orden, con varias descargas a la vez: el principio está listo enseguida.
+    let nextToLoad = 0;
+    let failures = 0;
+    const loadOne = (index: number) =>
+      new Promise<void>((resolve) => {
+        const image = new Image();
+        image.decoding = "async";
+        image.onload = () => {
+          image.decode().catch(() => undefined).finally(() => {
+            if (cancelled) { resolve(); return; }
+            frames[index] = image;
+            while (readyUpTo + 1 < count && frames[readyUpTo + 1]) readyUpTo += 1;
+            queueTick();
+            resolve();
+          });
+        };
+        image.onerror = () => { failures += 1; resolve(); };
+        image.src = frameUrl(set, index);
+      });
+    const worker = async () => {
+      while (!cancelled && nextToLoad < count) {
+        const index = nextToLoad;
+        nextToLoad += 1;
+        await loadOne(index);
+      }
+    };
+    Promise.all(Array.from({ length: PRELOAD_CONCURRENCY }, worker)).then(() => {
+      if (cancelled) return;
+      loadingDone = true;
+      // Si faltan fotogramas, se rellenan con el anterior para no dejar huecos.
+      for (let i = 1; i < count; i += 1) if (!frames[i]) frames[i] = frames[i - 1];
+      // Sin ningún fotograma no hay intro que mostrar.
+      if (failures === count || !frames[0]) finish();
+      else queueTick();
+    });
+
     resizeCanvas();
     window.addEventListener("resize", resizeCanvas);
     window.addEventListener("wheel", onWheel, { passive: false });
@@ -249,28 +205,6 @@ export default function StickerScrollHero({ onFinished }: { onFinished?: () => v
     window.addEventListener("touchmove", onTouchMove, { passive: false });
     window.addEventListener("touchend", onTouchEnd);
     window.addEventListener("keydown", onKey);
-
-    // El vídeo pesa poco: se descarga entero y de ahí se extraen los fotogramas.
-    const profile = pickProfile();
-    fetch(STICKER_VIDEO)
-      .then((response) => (response.ok ? response.blob() : Promise.reject(new Error(String(response.status)))))
-      .then((blob) => {
-        if (cancelled) return;
-        objectUrl = URL.createObjectURL(blob);
-        return captureFrames(objectUrl, profile, (captured, videoDuration) => {
-          duration = videoDuration;
-          frames.push(captured);
-          queueTick();
-        }, () => cancelled);
-      })
-      .catch(() => undefined)
-      .finally(() => {
-        if (cancelled) return;
-        captureDone = true;
-        // Sin fotogramas (vídeo roto) no hay intro que mostrar.
-        if (frames.length === 0) finish();
-        else queueTick();
-      });
 
     return () => {
       cancelled = true;
@@ -281,8 +215,6 @@ export default function StickerScrollHero({ onFinished }: { onFinished?: () => v
       window.removeEventListener("touchend", onTouchEnd);
       window.removeEventListener("keydown", onKey);
       if (frame !== null) cancelAnimationFrame(frame);
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
-      frames.length = 0;
     };
   }, [phase]);
 
