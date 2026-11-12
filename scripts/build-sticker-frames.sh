@@ -40,11 +40,10 @@ echo "→ landscape 1920x1080"
 LANDSCAPE=$(find "$OUT/landscape" -name '*.webp' | wc -l | tr -d ' ')
 
 echo "→ portrait 720x1440 (vídeo 720x$FG_H)"
-# Fondo fijo: el último fotograma (papel limpio, sin el rollo) con sus bordes prolongados y desenfocados.
-# Si se hiciera con cada fotograma, el rollo dejaría una franja al pasar por el borde.
+# Fondo fijo: el último fotograma del vídeo original (papel limpio, sin el rollo), aunque se recorte antes,
+# con sus bordes prolongados y desenfocados. Si se hiciera con cada fotograma, el rollo dejaría una franja.
 BG_PNG="$(mktemp -d)/portrait-bg.png"
-if [ -n "$END" ]; then BG_SEEK=(-ss "$(awk "BEGIN { print $END - 0.1 }")"); else BG_SEEK=(-sseof -0.1); fi
-"$FFMPEG" -v error -y "${BG_SEEK[@]}" -i "$INPUT" -frames:v 1 -update 1 \
+"$FFMPEG" -v error -y -sseof -0.1 -i "$INPUT" -frames:v 1 -update 1 \
   -vf "scale=720:$FG_H:flags=lanczos,pad=720:1440:0:$PAD_TOP,fillborders=top=$PAD_TOP:bottom=$PAD_BOTTOM:mode=smear,boxblur=luma_radius=180:luma_power=3:chroma_radius=170:chroma_power=3" \
   "$BG_PNG"
 
