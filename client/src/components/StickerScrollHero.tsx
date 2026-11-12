@@ -4,6 +4,8 @@ import { STICKER_FRAME_SETS } from "@/lib/sticker-frames.generated";
 
 // Píxeles de scroll (rueda, dedo o teclado) necesarios para ver la animación entera: ~5 s de gesto continuo.
 export const INTRO_SCROLL_PX = 2400;
+// Multiplicador del desplazamiento del dedo en pantallas táctiles (la rueda / trackpad no lo usa).
+const TOUCH_SPEED = 4.4;
 // Cuánto se acerca el progreso visible al objetivo en cada frame (0-1). Más alto = más directo.
 const SMOOTHING = 0.2;
 // Duración del fundido a la página una vez termina la animación.
@@ -183,8 +185,9 @@ export default function StickerScrollHero({ onFinished }: { onFinished?: () => v
       event.preventDefault();
       const y = event.touches[0]?.clientY;
       if (y === undefined || lastTouchY === null) return;
-      // El dedo recorre menos píxeles que la rueda: se amplifica para que la animación dure lo mismo.
-      move((lastTouchY - y) * 2.2);
+      // El dedo recorre muchos menos píxeles que la rueda: se amplifica para que en móvil la intro
+      // se complete en más o menos el mismo tiempo que en el portátil. Solo afecta al gesto táctil.
+      move((lastTouchY - y) * TOUCH_SPEED);
       lastTouchY = y;
     };
     const onTouchEnd = () => { lastTouchY = null; };
