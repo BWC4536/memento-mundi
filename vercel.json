@@ -3,5 +3,6 @@
   "outputDirectory": "dist/public",
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
-  ]
+  ],
+  "crons": [{ "path": "/api/keep-alive", "schedule": "0 9 */3 * *" }]
 }
