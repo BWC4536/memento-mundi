@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { useLocation } from "wouter";
 import { HOME_EVENT, SCAN_EVENT } from "@/components/NavigationDock";
 import CharacterGuide from "@/components/CharacterGuide";
+import Mascot from "@/components/ui/Mascot";
 import InfiniteCanvasEditor from "@/components/InfiniteCanvasEditor";
 import QrScannerDialog from "@/components/QrScannerDialog";
 import ScrapbookPhotoView from "@/components/ScrapbookPhotoView";
@@ -111,15 +112,11 @@ export default function Home() {
     <main className="min-h-screen pb-32 bg-[#EAE7DA] overflow-x-hidden">
       <div className="mx-auto max-w-7xl px-4 pb-10 pt-5 sm:px-8 lg:px-12">
         <BrandHeader userName={undefined} onProfile={() => auth.openLogin()} />
-        <section className="mt-14 sm:mt-20 flex flex-col items-center text-center">
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .5 }} className="relative">
-            <div className="mx-auto flex h-28 w-28 sm:h-32 sm:w-32 items-center justify-center rounded-[2.5rem] border-2 border-ink bg-orange/20 shadow-hard">
-              <ShoppingBag size={48} className="text-orange" strokeWidth={1.8} />
-            </div>
-            <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: .3, type: "spring" }} className="absolute -right-2 -top-2 sm:-right-3 sm:-top-3 flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full border-2 border-ink bg-orange text-lg sm:text-xl shadow-hard-sm">✦</motion.span>
-          </motion.div>
+        <section className="mt-8 sm:mt-10 flex flex-col items-center text-center">
+          {/* Mascota: el gesto de despegar la pegatina explica cómo empieza todo */}
+          <Mascot name="28-pegatina-despegar" size="md" mobileSize="sm" tilt={-2} priority />
 
-          <motion.h1 initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: .12 }} className="mt-8 font-brand text-4xl sm:text-6xl md:text-7xl font-black leading-[.92] tracking-[-.04em] break-words">
+          <motion.h1 initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: .12 }} className="mt-5 sm:mt-8 font-brand text-4xl sm:text-6xl md:text-7xl font-black leading-[.92] tracking-[-.04em] break-words">
             Aún no tienes<br /><span className="text-orange">viajes.</span>
           </motion.h1>
 
