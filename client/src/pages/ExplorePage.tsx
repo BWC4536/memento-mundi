@@ -77,6 +77,8 @@ export default function ExplorePage() {
   const [zoom, setZoom] = useState(2.2);
   const [selected, setSelected] = useState<MemoryPlace | null>(null);
   const [mapReady, setMapReady] = useState(false);
+  // Sin clave de Google Maps (o con una no autorizada) el mapa no carga: lo decimos en vez de esperar para siempre.
+  const [mapError, setMapError] = useState(false);
 
   const changeZoom = (delta: number) => {
     if (mapRef.current) {
@@ -165,8 +167,8 @@ export default function ExplorePage() {
 
           <motion.div initial={{ opacity: 0, rotate: 1, scale: .98 }} animate={{ opacity: 1, rotate: 0, scale: 1 }} transition={{ duration: .55 }} className="relative overflow-hidden rounded-[2rem] border-2 border-ink bg-[#d6dfd8] p-2 shadow-hard sm:p-3">
             <div className="absolute left-6 top-6 z-10 rounded-full border-2 border-ink bg-cream px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.14em] shadow-hard-sm">Mapa mundi · vivo</div>
-            <div className="pointer-events-none absolute bottom-5 left-6 z-20 max-w-[210px] rounded-2xl border-2 border-ink bg-ink/90 px-3 py-2 text-[10px] font-bold leading-relaxed text-cream shadow-hard-sm">{mapReady ? (zoom >= 4 ? "Chinchetas desbloqueadas: toca una ciudad." : "Amplía para revelar tus recuerdos.") : "Explora el atlas mientras termina de cargar."}</div>
-            <div className="relative overflow-hidden rounded-[1.5rem] border-2 border-ink bg-[#b8c9c1]"><WorldMapPreview visible={!mapReady || zoom < 4} showPlaces={zoom >= 4} onSelect={selectPlace} /><MapView initialCenter={{ lat: 18, lng: 0 }} initialZoom={2} showControls={false} onMapReady={handleMapReady} className={`relative z-10 h-[52vh] min-h-[320px] w-full sm:min-h-[470px] ${mapReady ? "" : "pointer-events-none"}`} /><div className="absolute bottom-5 right-5 z-20 flex flex-col overflow-hidden rounded-xl border-2 border-ink bg-cream shadow-hard-sm"><button type="button" onClick={() => changeZoom(1)} className="flex h-9 w-9 items-center justify-center border-b-2 border-ink transition-colors hover:bg-orange" aria-label="Acercar mapa"><Plus size={16} /></button><button type="button" onClick={() => changeZoom(-1)} className="flex h-9 w-9 items-center justify-center transition-colors hover:bg-orange" aria-label="Alejar mapa"><Minus size={16} /></button></div></div>
+            <div className="pointer-events-none absolute bottom-5 left-6 z-20 max-w-[210px] rounded-2xl border-2 border-ink bg-ink/90 px-3 py-2 text-[10px] font-bold leading-relaxed text-cream shadow-hard-sm">{mapError ? "El mapa no está disponible ahora mismo. Elige una coordenada en la lista." : mapReady ? (zoom >= 4 ? "Chinchetas desbloqueadas: toca una ciudad." : "Amplía para revelar tus recuerdos.") : "Explora el atlas mientras termina de cargar."}</div>
+            <div className="relative overflow-hidden rounded-[1.5rem] border-2 border-ink bg-[#b8c9c1]"><WorldMapPreview visible={!mapReady || zoom < 4} showPlaces={!mapError && zoom >= 4} onSelect={selectPlace} /><MapView initialCenter={{ lat: 18, lng: 0 }} initialZoom={2} showControls={false} onMapReady={handleMapReady} onError={() => setMapError(true)} className={`relative z-10 h-[52vh] min-h-[320px] w-full sm:min-h-[470px] ${mapReady ? "" : "pointer-events-none"}`} /><div className={`absolute bottom-5 right-5 z-20 flex-col overflow-hidden rounded-xl border-2 border-ink bg-cream shadow-hard-sm ${mapError ? "hidden" : "flex"}`}><button type="button" onClick={() => changeZoom(1)} className="flex h-9 w-9 items-center justify-center border-b-2 border-ink transition-colors hover:bg-orange" aria-label="Acercar mapa"><Plus size={16} /></button><button type="button" onClick={() => changeZoom(-1)} className="flex h-9 w-9 items-center justify-center transition-colors hover:bg-orange" aria-label="Alejar mapa"><Minus size={16} /></button></div></div>
           </motion.div>
         </section>
 
