@@ -8,6 +8,7 @@
  * y sustituirse por su URL/clave (ver `findInlineAssets`).
  */
 import {
+  isUuid,
   sanitizeComposition,
   type CanvasElement,
   type CanvasElementType,
@@ -38,6 +39,7 @@ export type ScrapbookElementRow = {
   id: string;
   page_id: string;
   scrapbook_id: string;
+  created_by: string;
   element_type: CanvasElementType;
   x: number;
   y: number;
@@ -75,8 +77,12 @@ export function findInlineAssets(composition: ScrapbookComposition) {
 
 export function compositionToRows(
   composition: ScrapbookComposition,
-  ids: { scrapbookId: string; pageId: string; name?: string; sortOrder?: number },
+  ids: { scrapbookId: string; pageId: string; createdBy: string; name?: string; sortOrder?: number },
 ): { page: ScrapbookPageRow; elements: ScrapbookElementRow[] } {
+  const notUuid = composition.elements.filter((element) => !isUuid(element.id));
+  if (notUuid.length > 0) {
+    throw new Error("Hay elementos con ids antiguos. Usa ensureUuidIds() antes de guardar en Supabase.");
+  }
   const inline = findInlineAssets(composition);
   if (inline.length > 0) {
     throw new Error(`Hay ${inline.length} foto(s) sin subir a Storage. Súbelas primero: la base de datos solo guarda URLs.`);
@@ -98,6 +104,7 @@ export function compositionToRows(
       id: element.id,
       page_id: ids.pageId,
       scrapbook_id: ids.scrapbookId,
+      created_by: ids.createdBy,
       element_type: element.type,
       x: element.x,
       y: element.y,

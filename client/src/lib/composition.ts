@@ -303,14 +303,33 @@ export function estimateTextHeight(content: string, style: TextStyle | undefined
 /* Fábricas                                                                    */
 /* ------------------------------------------------------------------------- */
 
-let idCounter = 0;
-export function createElementId(prefix: string) {
-  idCounter += 1;
-  const random =
-    typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
-      ? crypto.randomUUID().slice(0, 8)
-      : Math.random().toString(36).slice(2, 10);
-  return `${prefix}-${Date.now().toString(36)}-${idCounter}-${random}`;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export const isUuid = (value: string) => UUID_PATTERN.test(value);
+
+function randomUuid() {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") return crypto.randomUUID();
+  const hex = Array.from({ length: 32 }, () => Math.floor(Math.random() * 16).toString(16));
+  hex[12] = "4";
+  hex[16] = ((parseInt(hex[16], 16) & 0x3) | 0x8).toString(16);
+  const s = hex.join("");
+  return `${s.slice(0, 8)}-${s.slice(8, 12)}-${s.slice(12, 16)}-${s.slice(16, 20)}-${s.slice(20)}`;
+}
+
+/** Ids uuid: coinciden con la clave primaria de scrapbook_elements en Supabase. */
+export function createElementId(_prefix?: string) {
+  return randomUuid();
+}
+
+/** Sustituye ids antiguos (no uuid) por uuids, p. ej. antes de sincronizar una composición local. */
+export function ensureUuidIds(composition: ScrapbookComposition): ScrapbookComposition {
+  if (composition.elements.every((element) => isUuid(element.id))) return composition;
+  return {
+    ...composition,
+    elements: composition.elements.map((element) =>
+      isUuid(element.id) ? element : { ...element, id: randomUuid(), metadata: { ...element.metadata, legacyId: element.id } },
+    ),
+  };
 }
 
 export function maxZ(elements: CanvasElement[]) {

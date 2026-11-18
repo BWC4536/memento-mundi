@@ -52,10 +52,19 @@ Editor, vista previa y pantalla completa usan el mismo renderizador (`Compositio
 - localStorage suele tener unos 5 MB por dominio. Si se llena, la composición sigue en memoria durante la sesión y el editor avisa de que no se pudo guardar la copia local.
 - Borrar los datos del navegador borra estas composiciones.
 
-## Supabase (preparado, no conectado)
+## Supabase
 
-1. Ejecutar `docs/supabase-schema.sql`, `001_scrapbook_canvas.sql` y `002_scrapbook_editor.sql`, en ese orden.
-2. Subir cada foto al bucket privado `scrapbook-media` con la ruta `<scrapbook_id>/<user_id>/<asset_id>.<ext>` (`buildAssetStoragePath`) y registrar una fila en `scrapbook_assets`.
-3. Sustituir el `src` de cada data URL por la URL firmada o pública. `compositionToRows` se niega a guardar data URLs, para que nunca lleguen bytes a la base de datos.
-4. Guardar la página con `compositionToRows` y leerla con `rowsToComposition`.
-5. Sustituir `persistComposition` / `hydrateScrapbooks` (`scrapbook-library.ts`) por llamadas a Supabase, manteniendo localStorage como caché offline si se desea.
+Proyecto: `https://iurldpjhpjkfpnabllxa.supabase.co`. La URL y la clave publicable se leen de `VITE_SUPABASE_URL` y `VITE_SUPABASE_PUBLISHABLE_KEY` (`.env.local` en local, variables de entorno en Vercel). Ver `.env.example`.
+
+Estado comprobado del proyecto (18 nov 2026):
+
+- Las políticas RLS actuales de `scrapbooks` y `scrapbook_members` se llaman entre sí y cualquier lectura falla con "infinite recursion detected in policy".
+- No existen `scrapbook_pages`, las columnas de posición de `scrapbook_elements`, `scrapbook_assets` ni el bucket `scrapbook-media`.
+- Solo está activo el login por email de Supabase Auth.
+
+Pasos:
+
+1. Ejecutar `docs/supabase/002_scrapbook_editor.sql` completo en el SQL Editor. Es autocontenida (no hace falta la 001), idempotente y no borra datos. Sustituye las políticas RLS de las tablas de scrapbooks para eliminar la recursión.
+2. Elegir cómo se identifican los usuarios ante Supabase (la app usa hoy el login de Manus, que Supabase no reconoce).
+3. Subir cada foto al bucket privado `scrapbook-media` con la ruta `<scrapbook_id>/<user_id>/<asset_id>.<ext>` (`buildAssetStoragePath`) y registrarla en `scrapbook_assets`.
+4. Guardar con `compositionToRows` (exige ids uuid y URLs, nunca data URLs; usar `ensureUuidIds` con composiciones locales antiguas) y leer con `rowsToComposition`.
