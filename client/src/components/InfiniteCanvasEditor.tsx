@@ -1,79 +1,632 @@
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronDown, ChevronUp, Copy, Download, Filter, ImagePlus, Layers3, Minus, Palette, Plus, RotateCcw, RotateCw, Save, Sparkles, Trash2, Type, WandSparkles, X } from "lucide-react";
+import {
+  ArrowUpToLine,
+  Check,
+  Copy,
+  Crop,
+  ImagePlus,
+  Layers3,
+  Magnet,
+  Maximize,
+  Minus,
+  Palette,
+  Plus,
+  Redo2,
+  Save,
+  Shapes,
+  SlidersHorizontal,
+  Trash2,
+  Type,
+  Undo2,
+  Wand2,
+  X,
+} from "lucide-react";
+import { toast } from "sonner";
+import {
+  addElement,
+  bringToFront,
+  clampCanvasZoom,
+  createElementId,
+  createPhotoElement,
+  createTextElement,
+  duplicateElement,
+  findElement,
+  placePhotoInFrame,
+  prepareCompositionForSave,
+  removeElement,
+  replacePhoto,
+  updateElement,
+  type CanvasElement,
+  type ScrapbookComposition,
+} from "@/lib/composition";
+import { createEditorState, editorReducer } from "@/lib/editor-history";
+import { IMAGE_INPUT_ACCEPT, ImageUploadError, prepareImageForCanvas, type PreparedImage } from "@/lib/image-upload";
+import { useImmersiveMode } from "@/lib/immersive";
 import type { Scrapbook } from "@/lib/scrapbooks";
+import { useKeyboardInset, useMediaQuery } from "@/hooks/useMediaQuery";
+import type { PanZoomView } from "@/hooks/usePanZoom";
+import EditorStage, { type StageApi } from "@/components/editor/EditorStage";
+import { PANEL_LABELS, PanelContent, type EditorApi, type PanelId, type PhotoRequest } from "@/components/editor/EditorPanels";
 
-export type CanvasElement = {
-  id: string;
-  type: "photo" | "text" | "sticker" | "frame";
-  x: number;
-  y: number;
-  scale: number;
-  rotation: number;
-  content: string;
-  filter: string;
-  z: number;
+export { CANVAS_IMAGE_ACCEPT } from "@/lib/image-upload";
+export type { CanvasElement, ScrapbookComposition } from "@/lib/composition";
+
+export type SaveFeedback = { persisted: boolean; message?: string };
+
+export type InfiniteCanvasEditorProps = {
+  scrapbook: Scrapbook;
+  initialComposition: ScrapbookComposition;
+  /** Devuelve la composición al padre. Puede informar si la copia local falló. */
+  onSave: (composition: ScrapbookComposition) => SaveFeedback | void;
+  onClose: () => void;
 };
 
-type FilterName = "normal" | "vivid" | "vintage" | "noir" | "warm";
-
-export const CANVAS_IMAGE_ACCEPT = "image/jpeg,image/png,image/webp,image/heic,image/heif";
-export const clampCanvasZoom = (value: number) => Math.max(0.55, Math.min(1.6, value));
-export const rotateCanvasElement = (value: number, degrees: number) => value + degrees;
-export const scaleCanvasElement = (value: number, delta: number) => Math.max(0.35, Math.min(1.8, value + delta));
-
-const filters: Array<{ name: FilterName; label: string; css: string }> = [
-  { name: "normal", label: "Original", css: "none" },
-  { name: "vivid", label: "Vivid", css: "saturate(1.45) contrast(1.08)" },
-  { name: "vintage", label: "Vintage", css: "sepia(.45) saturate(.82) contrast(1.05)" },
-  { name: "noir", label: "Noir", css: "grayscale(1) contrast(1.25)" },
-  { name: "warm", label: "Warm", css: "sepia(.25) saturate(1.2) hue-rotate(-8deg)" },
+const TOOLS: Array<{ id: Exclude<PanelId, "ajustes">; icon: typeof Palette }> = [
+  { id: "diseno", icon: Palette },
+  { id: "elementos", icon: Shapes },
+  { id: "fotos", icon: ImagePlus },
+  { id: "texto", icon: Type },
+  { id: "filtros", icon: Wand2 },
+  { id: "capas", icon: Layers3 },
 ];
 
-export const initialCanvasElements = (scrapbook: Scrapbook): CanvasElement[] => [
-  { id: "cover", type: "photo", x: 0, y: -20, scale: 1, rotation: -2, content: scrapbook.cover, filter: "normal", z: 1 },
-  { id: "title", type: "text", x: -80, y: 170, scale: 1, rotation: -2, content: scrapbook.title, filter: "normal", z: 2 },
-  { id: "location", type: "sticker", x: 115, y: -140, scale: 1, rotation: 8, content: scrapbook.location.toUpperCase(), filter: "normal", z: 3 },
-];
+const PANEL_HINTS: Record<PanelId, string> = {
+  diseno: "Fondo, textura, formato y presets del lienzo.",
+  elementos: "Marcos, cintas, pegatinas, sellos y formas.",
+  fotos: "Añade, reemplaza y recorta tus fotos.",
+  texto: "Escribe, cambia tipografía, tamaño y color.",
+  filtros: "Filtros no destructivos para la foto seleccionada.",
+  capas: "Ordena, oculta y bloquea elementos.",
+  ajustes: "Tamaño, rotación, color y capas del elemento.",
+};
 
-function filterCss(name: string) {
-  return filters.find((item) => item.name === name)?.css ?? "none";
+function IconButton({ label, onClick, children, disabled, active, className = "" }: { label: string; onClick: () => void; children: ReactNode; disabled?: boolean; active?: boolean; className?: string }) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      onClick={onClick}
+      disabled={disabled}
+      aria-pressed={active}
+      className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border-2 transition-colors disabled:pointer-events-none disabled:opacity-35 ${active ? "border-orange bg-orange text-ink" : "border-cream/25 text-cream hover:border-orange hover:bg-orange/15"} ${className}`}
+    >
+      {children}
+    </button>
+  );
 }
 
-export default function InfiniteCanvasEditor({ scrapbook, onClose, onSave, initialElements }: { scrapbook: Scrapbook; onClose: () => void; onSave?: (elements: CanvasElement[]) => void; initialElements?: CanvasElement[] }) {
-  const [elements, setElements] = useState(() => initialElements ?? initialCanvasElements(scrapbook));
-  const [selectedId, setSelectedId] = useState("cover");
-  const [zoom, setZoom] = useState(1);
-  const [activePanel, setActivePanel] = useState<"elements" | "upload" | "text" | "layers">("elements");
-  const [saved, setSaved] = useState(false);
-  const uploadRef = useRef<HTMLInputElement>(null);
-  const selected = elements.find((element) => element.id === selectedId);
-  const ordered = useMemo(() => [...elements].sort((a, b) => b.z - a.z), [elements]);
-
-  const updateSelected = (patch: Partial<CanvasElement>) => {
-    setElements((current) => current.map((element) => element.id === selectedId ? { ...element, ...patch } : element));
-  };
-  const addElement = (element: CanvasElement) => {
-    setElements((current) => [...current, { ...element, z: Math.max(...current.map((item) => item.z), 0) + 1 }]);
-    setSelectedId(element.id);
-  };
-  const addText = () => addElement({ id: `text-${Date.now()}`, type: "text", x: 0, y: 80, scale: 1, rotation: -2, content: "Escribe aquí", filter: "normal", z: 0 });
-  const addSticker = (content: string) => addElement({ id: `sticker-${Date.now()}`, type: "sticker", x: 0, y: 80, scale: 1, rotation: 4, content, filter: "normal", z: 0 });
-  const removeSelected = () => { if (selectedId === "cover") return; setElements((current) => current.filter((element) => element.id !== selectedId)); setSelectedId("cover"); };
-  const duplicateSelected = () => { if (!selected) return; addElement({ ...selected, id: `${selected.type}-${Date.now()}`, x: selected.x + 30, y: selected.y + 30 }); };
-  const layer = (direction: "up" | "down") => updateSelected({ z: (selected?.z ?? 1) + (direction === "up" ? 1 : -1) });
-
-  return <div className="fixed inset-0 z-50 flex flex-col bg-[#172d36] text-cream">
-    <header className="flex h-16 shrink-0 items-center justify-between border-b-2 border-cream/15 bg-ink px-4 sm:px-6">
-      <div className="flex items-center gap-3"><button type="button" onClick={onClose} aria-label="Cerrar editor" className="rounded-xl border-2 border-cream/40 p-2 transition-colors hover:bg-orange hover:text-ink"><X size={18} /></button><div><p className="text-[9px] font-black uppercase tracking-[.2em] text-orange">Pizarra infinita</p><p className="font-display text-sm font-black">{scrapbook.title}</p></div></div>
-      <div className="hidden items-center gap-2 rounded-full border border-cream/20 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-cream/60 sm:flex"><WandSparkles size={13} className="text-orange" /> Inspirado en Canva · lienzo libre</div>
-      <div className="flex items-center gap-2"><button type="button" onClick={() => { setSaved(true); onSave?.(elements); }} className="flex items-center gap-2 rounded-xl border-2 border-cream bg-orange px-3 py-2 text-xs font-black text-ink shadow-[3px_3px_0_#EAE7DA]"><Save size={15} /> <span className="hidden sm:inline">{saved ? "Guardado" : "Guardar"}</span></button><button type="button" aria-label="Descargar diseño" className="rounded-xl border-2 border-cream/40 p-2"><Download size={17} /></button></div>
-    </header>
-    <div className="flex min-h-0 flex-1">
-      <aside className="z-20 flex w-[76px] shrink-0 flex-col items-center gap-2 border-r-2 border-cream/15 bg-ink px-2 py-4 sm:w-24"><button type="button" onClick={() => { setActivePanel("elements"); }} className={`editor-tool ${activePanel === "elements" ? "active" : ""}`}><Palette size={19} /><span>Elementos</span></button><button type="button" onClick={() => { setActivePanel("upload"); uploadRef.current?.click(); }} className={`editor-tool ${activePanel === "upload" ? "active" : ""}`}><ImagePlus size={19} /><span>Fotos</span></button><button type="button" onClick={() => { setActivePanel("text"); addText(); }} className={`editor-tool ${activePanel === "text" ? "active" : ""}`}><Type size={19} /><span>Texto</span></button><button type="button" onClick={() => setActivePanel("layers")} className={`editor-tool ${activePanel === "layers" ? "active" : ""}`}><Layers3 size={19} /><span>Capas</span></button><input ref={uploadRef} type="file" accept={CANVAS_IMAGE_ACCEPT} className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (!file) return; addElement({ id: `photo-${Date.now()}`, type: "photo", x: 40, y: 40, scale: .72, rotation: 3, content: URL.createObjectURL(file), filter: "normal", z: 0 }); }} /></aside>
-      <main className="relative min-w-0 flex-1 overflow-hidden bg-[#203a43]" onClick={() => setSelectedId("")}><div className="pointer-events-none absolute inset-0 opacity-20" style={{ backgroundImage: "radial-gradient(#EAE7DA 1px, transparent 1px)", backgroundSize: "24px 24px" }} /><motion.div drag dragMomentum={false} dragElastic={0.08} className="absolute left-1/2 top-1/2 h-[620px] w-[820px] -translate-x-1/2 -translate-y-1/2 cursor-grab active:cursor-grabbing" style={{ scale: zoom }} aria-label="Pizarra infinita desplazable"><div className="absolute inset-0 rounded-[2rem] border-2 border-ink bg-[#d6dfd8] shadow-[12px_12px_0_rgba(11,33,48,.45)]"><div className="absolute inset-5 overflow-hidden rounded-2xl border-2 border-ink bg-[#eae7da]">{ordered.map((element) => <motion.div key={element.id} drag dragMomentum={false} onClick={(event) => { event.stopPropagation(); setSelectedId(element.id); }} onDragEnd={(_, info) => updateSelected({ x: element.x + info.offset.x, y: element.y + info.offset.y })} style={{ x: element.x, y: element.y, rotate: element.rotation, scale: element.scale, zIndex: element.z, filter: filterCss(element.filter) }} className={`absolute left-1/2 top-1/2 cursor-grab select-none active:cursor-grabbing ${selectedId === element.id ? "ring-4 ring-orange ring-offset-2" : ""} ${element.type === "photo" ? "w-72 rounded-xl border-8 border-white shadow-[0_0_0_2px_#0B2130,7px_7px_0_#0B2130]" : element.type === "text" ? "min-w-52 rounded-lg border-2 border-ink bg-cream px-4 py-2 font-display text-3xl font-black text-ink shadow-hard-sm" : element.type === "sticker" ? "rounded-full border-2 border-ink bg-orange px-4 py-2 text-xs font-black tracking-wider text-ink shadow-hard-sm" : "rounded-xl border-4 border-orange p-4"}`}>{element.type === "photo" ? <img src={element.content} alt="Elemento de foto" className="pointer-events-none aspect-[4/3] w-full rounded object-cover" /> : element.type === "frame" ? <div className="h-[216px] w-72 border-4 border-dashed border-ink" /> : element.content}</motion.div>)}</div><div className="pointer-events-none absolute bottom-4 left-6 text-[10px] font-black uppercase tracking-[.16em] text-ink/50">Pizarra sin límites · arrastra los elementos</div></div></motion.div><div className="absolute bottom-5 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1 rounded-2xl border-2 border-cream/30 bg-ink/90 p-1.5 shadow-hard-sm"><button type="button" onClick={() => setZoom((value) => Math.max(.55, value - .1))} className="rounded-xl p-2 hover:bg-orange hover:text-ink"><Minus size={16} /></button><span className="min-w-14 text-center text-[10px] font-black">{Math.round(zoom * 100)}%</span><button type="button" onClick={() => setZoom((value) => Math.min(1.6, value + .1))} className="rounded-xl p-2 hover:bg-orange hover:text-ink"><Plus size={16} /></button></div><div className="absolute bottom-20 left-2 right-2 z-20 rounded-2xl border-2 border-cream/30 bg-ink/95 p-2 shadow-hard-sm lg:hidden"><div className="grid grid-cols-4 gap-1"><button type="button" onClick={() => setActivePanel("elements")} className="editor-tool active"><Palette size={16} /><span>Elementos</span></button><button type="button" onClick={() => { setActivePanel("upload"); uploadRef.current?.click(); }} className="editor-tool"><ImagePlus size={16} /><span>Foto</span></button><button type="button" onClick={() => { setActivePanel("text"); addText(); }} className="editor-tool"><Type size={16} /><span>Texto</span></button><button type="button" onClick={() => setActivePanel("layers")} className="editor-tool"><Layers3 size={16} /><span>Capas</span></button></div>{activePanel === "elements" && <div className="mt-2 flex gap-2 overflow-x-auto pb-1"><button type="button" onClick={() => addElement({ id: `frame-${Date.now()}`, type: "frame", x: selected?.x ?? 0, y: selected?.y ?? -20, scale: selected?.scale ?? 1, rotation: selected?.rotation ?? 0, content: "Marco", filter: "normal", z: 0 })} className="shrink-0 rounded-xl border-2 border-orange px-3 py-2 text-[10px] font-black">+ Marco</button>{filters.map((item) => <button type="button" key={item.name} onClick={() => selected && updateSelected({ filter: item.name })} className="shrink-0 rounded-xl border-2 border-cream/20 px-3 py-2 text-[10px] font-black">{item.label}</button>)}</div>}{activePanel === "text" && selected?.type === "text" && <input aria-label="Editar texto seleccionado" value={selected.content} onChange={(event) => updateSelected({ content: event.target.value })} className="mt-2 w-full rounded-xl border-2 border-ink bg-cream px-3 py-2 text-sm font-black text-ink outline-none" />}{selected && <div className="mt-2 flex gap-2"><button type="button" onClick={() => updateSelected({ scale: Math.min(1.8, selected.scale + .1) })} className="editor-action flex-1"><Plus size={14} /> Tamaño</button><button type="button" onClick={() => updateSelected({ rotation: selected.rotation + 10 })} className="editor-action flex-1"><RotateCw size={14} /> Girar</button></div>}</div></main>
-      <aside className="hidden w-72 shrink-0 overflow-y-auto border-l-2 border-cream/15 bg-ink p-4 lg:block">{activePanel === "elements" && <div><p className="editor-label">Plantillas rápidas</p><div className="grid grid-cols-2 gap-2">{["bg-cream", "bg-orange", "bg-[#d7dfd6]", "bg-[#f2c5a0]"].map((color, index) => <button type="button" key={color} onClick={() => addSticker(["✦", "✺", "☼", "♡"][index])} className={`flex h-20 items-center justify-center rounded-xl border-2 border-cream/40 ${color} text-2xl text-ink`}>{["✦", "✺", "☼", "♡"][index]}</button>)}</div><button type="button" onClick={() => addElement({ id: `frame-${Date.now()}`, type: "frame", x: selected?.x ?? 0, y: selected?.y ?? -20, scale: selected?.scale ?? 1, rotation: selected?.rotation ?? 0, content: "Marco", filter: "normal", z: 0 })} className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border-2 border-cream/20 px-3 py-3 text-xs font-black hover:border-orange"><Layers3 size={16} /> Añadir marco</button><p className="mt-6 editor-label">Filtros visuales</p><div className="grid grid-cols-2 gap-2">{filters.map((item) => <button type="button" key={item.name} onClick={() => selected && updateSelected({ filter: item.name })} className="overflow-hidden rounded-xl border-2 border-cream/20 text-left text-[10px] font-black text-cream/75 hover:border-orange"><img src={scrapbook.cover} alt={item.label} style={{ filter: item.css }} className="h-16 w-full object-cover" /><span className="block p-2">{item.label}</span></button>)}</div></div>}{activePanel === "upload" && <div><p className="editor-label">Tus archivos</p><button type="button" onClick={() => uploadRef.current?.click()} className="flex w-full flex-col items-center rounded-2xl border-2 border-dashed border-cream/30 p-6 text-center hover:border-orange"><ImagePlus className="text-orange" /><span className="mt-2 text-xs font-black">Subir JPG, PNG, JPEG, WEBP o HEIC</span></button><p className="mt-4 text-xs leading-relaxed text-cream/55">Arrastra cada foto dentro de la pizarra, cambia su tamaño y gírala como una pieza de collage.</p></div>}{activePanel === "text" && <div><p className="editor-label">Capas de texto</p><button type="button" onClick={addText} className="flex w-full items-center gap-2 rounded-xl border-2 border-orange bg-orange/15 px-3 py-3 text-xs font-black"><Type size={17} /> Añadir título</button><button type="button" onClick={() => addElement({ id: `body-${Date.now()}`, type: "text", x: 10, y: 120, scale: .7, rotation: 0, content: "Una nota para recordar.", filter: "normal", z: 0 })} className="mt-2 flex w-full items-center gap-2 rounded-xl border-2 border-cream/20 px-3 py-3 text-xs font-black"><Type size={15} /> Añadir nota</button></div>}{activePanel === "layers" && <div><p className="editor-label">Orden de capas</p><div className="space-y-2">{ordered.map((element) => <button type="button" key={element.id} onClick={() => setSelectedId(element.id)} className={`flex w-full items-center justify-between rounded-xl border-2 px-3 py-2 text-left text-xs font-black ${selectedId === element.id ? "border-orange bg-orange/15" : "border-cream/15"}`}><span className="max-w-36 truncate">{element.type === "photo" ? "Foto" : element.content}</span><span className="text-cream/40">z{element.z}</span></button>)}</div></div>}{selected && <div className="mt-8 border-t-2 border-cream/15 pt-5"><p className="editor-label">Elemento seleccionado</p>{selected.type === "text" && <label className="mb-3 block text-[10px] font-black uppercase tracking-wider text-cream/60">Texto<input value={selected.content} onChange={(event) => updateSelected({ content: event.target.value })} className="mt-2 w-full rounded-xl border-2 border-cream/20 bg-cream px-3 py-2 text-sm font-black text-ink outline-none focus:border-orange" /></label>}<div className="grid grid-cols-2 gap-2"><button type="button" onClick={() => updateSelected({ scale: Math.min(1.8, selected.scale + .1) })} className="editor-action"><Plus size={15} /> Escala</button><button type="button" onClick={() => updateSelected({ scale: Math.max(.35, selected.scale - .1) })} className="editor-action"><Minus size={15} /> Reducir</button><button type="button" onClick={() => updateSelected({ rotation: selected.rotation - 10 })} className="editor-action"><RotateCcw size={15} /> Girar</button><button type="button" onClick={() => updateSelected({ rotation: selected.rotation + 10 })} className="editor-action"><RotateCw size={15} /> Girar</button><button type="button" onClick={() => layer("up")} className="editor-action"><ChevronUp size={15} /> Frente</button><button type="button" onClick={() => layer("down")} className="editor-action"><ChevronDown size={15} /> Atrás</button><button type="button" onClick={duplicateSelected} className="editor-action"><Copy size={15} /> Duplicar</button><button type="button" onClick={removeSelected} className="editor-action text-[#f2c5a0]"><Trash2 size={15} /> Borrar</button></div></div>}</aside>
+function EmptyCanvasState({ onPhoto, onText, onElements }: { onPhoto: () => void; onText: () => void; onElements: () => void }) {
+  return (
+    <div data-stage-ui className="pointer-events-auto max-w-[min(92%,22rem)] rounded-2xl border-2 border-ink bg-cream p-3 text-center text-ink shadow-hard sm:p-5">
+      <p className="font-display text-xl sm:text-3xl">Tu página está en blanco</p>
+      <ol className="mx-auto mt-2 max-w-xs space-y-0.5 text-left text-[12px] font-bold leading-snug text-ink/70 sm:text-sm">
+        <li>1. Añade una o varias fotos.</li>
+        <li>2. Escribe un texto con lo que recuerdas.</li>
+        <li>3. Decora con marcos, cintas y sellos.</li>
+      </ol>
+      <div className="mt-3 flex flex-wrap justify-center gap-2">
+        <button type="button" onClick={onPhoto} className="flex min-h-10 items-center gap-1.5 rounded-xl border-2 border-ink bg-orange px-3 text-xs font-black shadow-hard-sm">
+          <ImagePlus size={15} /> Añadir foto
+        </button>
+        <button type="button" onClick={onText} className="flex min-h-10 items-center gap-1.5 rounded-xl border-2 border-ink bg-white px-3 text-xs font-black">
+          <Type size={15} /> Texto
+        </button>
+        <button type="button" onClick={onElements} className="flex min-h-10 items-center gap-1.5 rounded-xl border-2 border-ink bg-white px-3 text-xs font-black">
+          <Shapes size={15} /> Elementos
+        </button>
+      </div>
     </div>
-    <AnimatePresence>{saved && <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="absolute bottom-5 right-5 z-30 rounded-xl border-2 border-ink bg-orange px-4 py-3 text-xs font-black text-ink shadow-hard-sm">Borrador guardado en esta sesión</motion.div>}</AnimatePresence>
-  </div>;
+  );
+}
+
+/**
+ * Editor visual de scrapbooks: pizarra libre con pan/zoom, selección, capas y
+ * paneles. El estado de edición es local, pero la composición guardada SIEMPRE
+ * se devuelve al padre con `onSave`; cerrar el editor no pierde nada guardado.
+ */
+export default function InfiniteCanvasEditor({ scrapbook, initialComposition, onSave, onClose }: InfiniteCanvasEditorProps) {
+  useImmersiveMode(true);
+  const [state, dispatch] = useReducer(editorReducer, initialComposition, (composition) => createEditorState(composition));
+  const savedRef = useRef<ScrapbookComposition>(state.present);
+  const [savedVersion, setSavedVersion] = useState(0);
+  const [notice, setNotice] = useState<{ tone: "ok" | "warn"; text: string } | null>(null);
+  const [view, setView] = useState<PanZoomView>({ zoom: clampCanvasZoom(initialComposition.canvas.zoom ?? 1), x: 0, y: 0 });
+  const isDesktop = useMediaQuery("(min-width: 1024px)");
+  const keyboardInset = useKeyboardInset();
+  const [activePanel, setActivePanel] = useState<PanelId>("elementos");
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [cropMode, setCropMode] = useState(false);
+  const [snapEnabled, setSnapEnabled] = useState(true);
+  const [textFocusToken, setTextFocusToken] = useState(0);
+  const [confirmClose, setConfirmClose] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const photoRequest = useRef<PhotoRequest>({ kind: "add" });
+  const stageApi = useRef<StageApi | null>(null);
+
+  const composition = state.present;
+  const selected = findElement(composition, state.selectedId);
+  const dirty = composition !== savedRef.current;
+  const latest = useRef({ composition, selected, isDesktop, view });
+  latest.current = { composition, selected, isDesktop, view };
+
+  useEffect(() => setCropMode(false), [state.selectedId]);
+  useEffect(() => {
+    if (!notice) return;
+    const timer = window.setTimeout(() => setNotice(null), 2800);
+    return () => window.clearTimeout(timer);
+  }, [notice]);
+
+  const apply = useCallback<EditorApi["apply"]>((update, options) => dispatch({ type: "apply", update, record: options?.record, select: options?.select }), []);
+  const select = useCallback((id: string | null) => dispatch({ type: "select", id }), []);
+  const checkpoint = useCallback(() => dispatch({ type: "checkpoint" }), []);
+  const onViewChange = useCallback((updater: (view: PanZoomView) => PanZoomView) => {
+    setView((current) => {
+      const next = updater(current);
+      return { ...next, zoom: clampCanvasZoom(next.zoom) };
+    });
+  }, []);
+
+  const openPanel = useCallback((panel: PanelId) => {
+    setActivePanel(panel);
+    if (!latest.current.isDesktop) setSheetOpen(true);
+  }, []);
+
+  const placementCenter = useCallback(() => {
+    const { composition: current } = latest.current;
+    const center = stageApi.current?.visibleCenter() ?? { x: current.canvas.width / 2, y: current.canvas.height / 2 };
+    const step = (current.elements.length % 5) * current.canvas.width * 0.02;
+    return { x: Math.min(current.canvas.width * 0.9, Math.max(current.canvas.width * 0.1, center.x + step)), y: Math.min(current.canvas.height * 0.9, Math.max(current.canvas.height * 0.1, center.y + step)) };
+  }, []);
+
+  const focusText = useCallback((id: string) => {
+    openPanel("texto");
+    setTextFocusToken((token) => token + 1);
+    if (!latest.current.isDesktop) {
+      window.setTimeout(() => stageApi.current?.revealElement(id, -Math.round(window.innerHeight * 0.2)), 60);
+    }
+  }, [openPanel]);
+
+  const addText = useCallback(() => {
+    const element = createTextElement(latest.current.composition, { center: placementCenter() });
+    dispatch({ type: "apply", update: (current) => addElement(current, element), select: element.id });
+    focusText(element.id);
+  }, [focusText, placementCenter]);
+
+  const finishText = useCallback(() => {
+    (document.activeElement as HTMLElement | null)?.blur?.();
+    const current = latest.current.selected;
+    if (current?.type === "text" && !(current.content ?? "").trim()) {
+      dispatch({ type: "apply", update: (composition) => removeElement(composition, current.id), select: null });
+    }
+    if (!latest.current.isDesktop) setSheetOpen(false);
+  }, []);
+
+  const requestPhotos = useCallback((request: PhotoRequest) => {
+    photoRequest.current = request;
+    setUploadError(null);
+    const input = fileRef.current;
+    if (!input) return;
+    input.value = "";
+    input.multiple = request.kind === "add";
+    input.click();
+  }, []);
+
+  const handleFiles = useCallback(async (files: File[]) => {
+    if (files.length === 0) return;
+    const request = photoRequest.current;
+    setUploading(true);
+    setUploadError(null);
+    const prepared: PreparedImage[] = [];
+    const errors: string[] = [];
+    for (const file of files) {
+      try {
+        prepared.push(await prepareImageForCanvas(file));
+      } catch (error) {
+        errors.push(error instanceof ImageUploadError ? error.message : `No se pudo leer “${file.name}”.`);
+      }
+    }
+    setUploading(false);
+    if (errors.length) {
+      setUploadError(errors.join(" "));
+      toast.error(errors[0]);
+    }
+    if (prepared.length === 0) return;
+
+    const toPhoto = (image: PreparedImage) => ({
+      src: image.src,
+      naturalWidth: image.width,
+      naturalHeight: image.height,
+      asset: { mimeType: image.mimeType, width: image.width, height: image.height, originalName: image.originalName, inline: true },
+    });
+
+    if (request.kind === "replace") {
+      dispatch({ type: "apply", update: (current) => replacePhoto(current, request.id, toPhoto(prepared[0])), select: request.id });
+      return;
+    }
+    let images = prepared;
+    const target = latest.current.selected;
+    const frameId = request.kind === "fill" ? request.id : target?.type === "frame" && !target.src ? target.id : null;
+    if (frameId) {
+      const [first, ...rest] = images;
+      dispatch({ type: "apply", update: (current) => placePhotoInFrame(current, frameId, toPhoto(first)), select: frameId });
+      images = rest;
+    }
+    if (images.length === 0) return;
+    const base = placementCenter();
+    const { composition: snapshot } = latest.current;
+    const created: CanvasElement[] = images.map((image, index) =>
+      createPhotoElement(snapshot, {
+        ...toPhoto(image),
+        center: { x: base.x + index * snapshot.canvas.width * 0.04, y: base.y + index * snapshot.canvas.width * 0.03 },
+        rotation: images.length > 1 ? (index % 2 ? 3 : -3) : 0,
+      }),
+    );
+    dispatch({ type: "apply", update: (current) => created.reduce((acc, element) => addElement(acc, element), current), select: created[created.length - 1].id });
+  }, [placementCenter]);
+
+  const save = useCallback(() => {
+    const { composition: current, view: currentView } = latest.current;
+    const prepared = prepareCompositionForSave({ ...current, canvas: { ...current.canvas, zoom: clampCanvasZoom(currentView.zoom) } });
+    const feedback = onSave(prepared);
+    dispatch({ type: "apply", update: () => prepared, record: false });
+    savedRef.current = prepared;
+    setSavedVersion((version) => version + 1);
+    setNotice(feedback && !feedback.persisted ? { tone: "warn", text: feedback.message ?? "Guardado solo en esta sesión" } : { tone: "ok", text: "Cambios guardados" });
+    return prepared;
+  }, [onSave]);
+
+  const requestClose = useCallback(() => {
+    if (latest.current.composition !== savedRef.current) setConfirmClose(true);
+    else onClose();
+  }, [onClose]);
+
+  // Atajos de teclado (desktop).
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const typing = !!target && (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName));
+      const mod = event.metaKey || event.ctrlKey;
+      if (mod && event.key.toLowerCase() === "s") {
+        event.preventDefault();
+        save();
+        return;
+      }
+      if (typing) {
+        if (event.key === "Escape") target?.blur();
+        return;
+      }
+      const current = latest.current.selected;
+      if (mod && event.key.toLowerCase() === "z") {
+        event.preventDefault();
+        dispatch({ type: event.shiftKey ? "redo" : "undo" });
+      } else if (mod && event.key.toLowerCase() === "y") {
+        event.preventDefault();
+        dispatch({ type: "redo" });
+      } else if (mod && event.key.toLowerCase() === "d" && current) {
+        event.preventDefault();
+        const copyId = createElementId("copy");
+        dispatch({ type: "apply", update: (composition) => duplicateElement(composition, current.id, copyId), select: copyId });
+      } else if ((event.key === "Delete" || event.key === "Backspace") && current) {
+        event.preventDefault();
+        dispatch({ type: "apply", update: (composition) => removeElement(composition, current.id), select: null });
+      } else if (event.key === "Escape") {
+        if (current) dispatch({ type: "select", id: null });
+        else requestClose();
+      } else if (current && !current.locked && event.key.startsWith("Arrow")) {
+        event.preventDefault();
+        const step = event.shiftKey ? 20 : 4;
+        const dx = event.key === "ArrowLeft" ? -step : event.key === "ArrowRight" ? step : 0;
+        const dy = event.key === "ArrowUp" ? -step : event.key === "ArrowDown" ? step : 0;
+        dispatch({ type: "apply", update: (composition) => updateElement(composition, current.id, { x: current.x + dx, y: current.y + dy }) });
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [requestClose, save]);
+
+  const api: EditorApi = useMemo(
+    () => ({
+      composition,
+      selected,
+      location: scrapbook.location,
+      canUndo: state.past.length > 0,
+      canRedo: state.future.length > 0,
+      undo: () => dispatch({ type: "undo" }),
+      redo: () => dispatch({ type: "redo" }),
+      apply,
+      checkpoint,
+      select,
+      openPanel,
+      addText,
+      finishText,
+      requestPhotos,
+      uploading,
+      uploadError,
+      cropMode,
+      setCropMode,
+      textFocusToken,
+      placementCenter,
+    }),
+    [addText, apply, checkpoint, composition, cropMode, finishText, openPanel, placementCenter, requestPhotos, scrapbook.location, select, selected, state.future.length, state.past.length, textFocusToken, uploadError, uploading],
+  );
+
+  const onToolPress = (tool: Exclude<PanelId, "ajustes">) => {
+    if (tool === "texto" && !(selected?.type === "text")) {
+      addText();
+      return;
+    }
+    if (tool === "texto" && selected) {
+      focusText(selected.id);
+      return;
+    }
+    if (!isDesktop && sheetOpen && activePanel === tool) {
+      setSheetOpen(false);
+      return;
+    }
+    openPanel(tool);
+  };
+
+  const statusText = dirty ? "Cambios sin guardar" : savedVersion > 0 ? "Cambios guardados" : "Sin cambios";
+  const zoomControls = (
+    <div className="flex items-center gap-1 rounded-xl border-2 border-cream/25 bg-ink/90 p-0.5" data-stage-ui>
+      <button type="button" aria-label="Alejar lienzo" onClick={() => onViewChange((current) => ({ ...current, zoom: current.zoom / 1.2 }))} className="flex h-9 w-9 items-center justify-center rounded-lg text-cream hover:bg-orange hover:text-ink">
+        <Minus size={16} />
+      </button>
+      <span className="min-w-12 text-center text-[11px] font-black tabular-nums text-cream" aria-label="Zoom del lienzo">{Math.round(view.zoom * 100)}%</span>
+      <button type="button" aria-label="Acercar lienzo" onClick={() => onViewChange((current) => ({ ...current, zoom: current.zoom * 1.2 }))} className="flex h-9 w-9 items-center justify-center rounded-lg text-cream hover:bg-orange hover:text-ink">
+        <Plus size={16} />
+      </button>
+      <button type="button" aria-label="Ajustar lienzo a la pantalla" onClick={() => setView({ zoom: 1, x: 0, y: 0 })} className="flex h-9 w-9 items-center justify-center rounded-lg text-cream hover:bg-orange hover:text-ink">
+        <Maximize size={15} />
+      </button>
+      <button type="button" aria-label="Guías de alineación" aria-pressed={snapEnabled} title="Guías de alineación" onClick={() => setSnapEnabled((value) => !value)} className={`flex h-9 w-9 items-center justify-center rounded-lg ${snapEnabled ? "bg-orange text-ink" : "text-cream hover:bg-cream/10"}`}>
+        <Magnet size={15} />
+      </button>
+    </div>
+  );
+
+  const quickActions = selected ? (
+    <div data-stage-ui className="flex gap-2 overflow-x-auto px-2 pb-1 [scrollbar-width:none]">
+      {[
+        { key: "ajustes", label: "Ajustes", icon: SlidersHorizontal, onClick: () => openPanel("ajustes") },
+        ...(selected.type === "text" ? [{ key: "texto", label: "Editar texto", icon: Type, onClick: () => focusText(selected.id) }] : []),
+        ...(selected.type === "photo"
+          ? [
+              { key: "filtros", label: "Filtros", icon: Wand2, onClick: () => openPanel("filtros") },
+              { key: "recorte", label: "Recorte", icon: Crop, onClick: () => openPanel("fotos") },
+            ]
+          : []),
+        ...(selected.type === "frame" ? [{ key: "foto", label: "Añadir foto", icon: ImagePlus, onClick: () => requestPhotos({ kind: "fill", id: selected.id }) }] : []),
+        {
+          key: "duplicar",
+          label: "Duplicar",
+          icon: Copy,
+          onClick: () => {
+            const copyId = createElementId("copy");
+            apply((current) => duplicateElement(current, selected.id, copyId), { select: copyId });
+          },
+        },
+        { key: "frente", label: "Al frente", icon: ArrowUpToLine, onClick: () => apply((current) => bringToFront(current, selected.id)) },
+        { key: "eliminar", label: "Eliminar", icon: Trash2, onClick: () => apply((current) => removeElement(current, selected.id), { select: null }) },
+      ].map((action) => (
+        <button
+          key={action.key}
+          type="button"
+          onClick={action.onClick}
+          className={`flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl border-2 border-ink px-3 text-[13px] font-black shadow-[2px_2px_0_#0B2130] ${action.key === "eliminar" ? "bg-[#f2c5a0] text-ink" : action.key === "ajustes" ? "bg-orange text-ink" : "bg-cream text-ink"}`}
+        >
+          <action.icon size={16} /> {action.label}
+        </button>
+      ))}
+    </div>
+  ) : null;
+
+  return (
+    <div role="dialog" aria-modal="true" aria-label={`Editor de ${scrapbook.title}`} className="fixed inset-0 z-[90] flex h-[100dvh] flex-col overflow-hidden bg-ink text-cream">
+      {/* Barra superior */}
+      <header className="flex shrink-0 items-center gap-2 border-b-2 border-cream/15 bg-ink px-2 pb-2 pt-[max(.5rem,env(safe-area-inset-top))] sm:px-4">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          <IconButton label="Deshacer" onClick={() => dispatch({ type: "undo" })} disabled={state.past.length === 0}>
+            <Undo2 size={18} />
+          </IconButton>
+          <IconButton label="Rehacer" onClick={() => dispatch({ type: "redo" })} disabled={state.future.length === 0}>
+            <Redo2 size={18} />
+          </IconButton>
+          <div className="ml-1 hidden min-w-0 sm:block">
+            <p className="text-[9px] font-black uppercase tracking-[.2em] text-orange">Editor · Memento Mundi</p>
+            <p className="truncate font-display text-base text-cream">{scrapbook.title}</p>
+          </div>
+        </div>
+        {isDesktop ? <div className="hidden lg:block">{zoomControls}</div> : null}
+        <div className="flex flex-1 items-center justify-end gap-2">
+          <span role="status" aria-live="polite" className={`hidden text-[11px] font-black md:inline ${dirty ? "text-orange" : "text-cream/55"}`}>
+            {statusText}
+          </span>
+          <button
+            type="button"
+            onClick={save}
+            className="relative flex h-11 items-center gap-2 rounded-xl border-2 border-cream bg-orange px-3 text-sm font-black text-ink shadow-[3px_3px_0_#EAE7DA] transition-transform active:translate-y-0.5 active:shadow-none sm:px-4"
+          >
+            {dirty ? <span className="absolute -right-1.5 -top-1.5 h-3.5 w-3.5 rounded-full border-2 border-ink bg-cream" aria-hidden="true" /> : null}
+            <Save size={17} /> <span className="sm:hidden">Guardar</span>
+            <span className="hidden sm:inline">Guardar cambios</span>
+          </button>
+          <button
+            type="button"
+            onClick={requestClose}
+            aria-label="Cerrar editor"
+            title="Cerrar"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 border-ink bg-cream text-ink shadow-[3px_3px_0_#FA9223] transition-transform hover:rotate-90"
+          >
+            <X size={20} strokeWidth={2.6} />
+          </button>
+        </div>
+      </header>
+
+      <div className="relative flex min-h-0 flex-1">
+        {isDesktop ? (
+          <>
+            <nav aria-label="Herramientas" className="flex w-[84px] shrink-0 flex-col gap-2 border-r-2 border-cream/15 bg-ink px-2 py-3">
+              {TOOLS.map((tool) => (
+                <button key={tool.id} type="button" onClick={() => onToolPress(tool.id)} aria-pressed={activePanel === tool.id} className={`editor-tool ${activePanel === tool.id ? "active" : ""}`}>
+                  <tool.icon size={20} />
+                  <span>{PANEL_LABELS[tool.id]}</span>
+                </button>
+              ))}
+            </nav>
+            <aside aria-label={`Panel ${PANEL_LABELS[activePanel === "ajustes" ? "capas" : activePanel]}`} className="w-[300px] shrink-0 overflow-y-auto border-r-2 border-cream/15 bg-ink px-4 pb-8 pt-4 xl:w-[330px]">
+              <h2 className="!text-3xl text-cream">{PANEL_LABELS[activePanel === "ajustes" ? "capas" : activePanel]}</h2>
+              <p className="mb-4 mt-1 text-[12px] font-semibold text-cream/55">{PANEL_HINTS[activePanel === "ajustes" ? "capas" : activePanel]}</p>
+              <PanelContent panel={activePanel === "ajustes" ? "capas" : activePanel} api={api} />
+            </aside>
+          </>
+        ) : null}
+
+        <main className="relative min-w-0 flex-1">
+          <EditorStage
+            composition={composition}
+            selectedId={state.selectedId}
+            view={view}
+            onViewChange={onViewChange}
+            onSelect={select}
+            onBeginChange={checkpoint}
+            onChange={(update) => apply(update, { record: false })}
+            onEditText={focusText}
+            onFillFrame={(id) => requestPhotos({ kind: "fill", id })}
+            cropMode={cropMode}
+            snapEnabled={snapEnabled}
+            apiRef={stageApi}
+            emptyState={<EmptyCanvasState onPhoto={() => requestPhotos({ kind: "add" })} onText={addText} onElements={() => openPanel("elementos")} />}
+          />
+          {!isDesktop ? <div className="pointer-events-none absolute left-2 top-2 [&>*]:pointer-events-auto">{zoomControls}</div> : null}
+          {!isDesktop && !sheetOpen && keyboardInset === 0 ? <div className="absolute inset-x-0 bottom-2">{quickActions}</div> : null}
+          {cropMode ? (
+            <div data-stage-ui className="absolute left-1/2 top-14 -translate-x-1/2 rounded-full border-2 border-ink bg-orange px-3 py-1.5 text-[12px] font-black text-ink lg:top-3">
+              Arrastra para mover la foto dentro del marco
+            </div>
+          ) : null}
+        </main>
+
+        {isDesktop ? (
+          <aside aria-label="Ajustes del elemento" className="w-[300px] shrink-0 overflow-y-auto border-l-2 border-cream/15 bg-ink px-4 pb-8 pt-4 xl:w-[320px]">
+            <h2 className="!text-3xl text-cream">Ajustes</h2>
+            <p className="mb-4 mt-1 text-[12px] font-semibold text-cream/55">{PANEL_HINTS.ajustes}</p>
+            <PanelContent panel="ajustes" api={api} />
+          </aside>
+        ) : null}
+      </div>
+
+      {/* Bottom sheet móvil */}
+      {!isDesktop ? (
+        <AnimatePresence>
+          {sheetOpen ? (
+            <motion.section
+              key="sheet"
+              aria-label={`Panel ${PANEL_LABELS[activePanel]}`}
+              initial={{ y: 24, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 24, opacity: 0, pointerEvents: "none" }}
+              transition={{ duration: 0.18, ease: [0.23, 1, 0.32, 1] }}
+              className="fixed inset-x-0 z-[3] flex flex-col rounded-t-[1.6rem] border-2 border-b-0 border-cream/25 bg-ink shadow-[0_-8px_0_rgba(250,146,35,.35)]"
+              style={{
+                bottom: keyboardInset > 0 ? keyboardInset : "calc(68px + env(safe-area-inset-bottom))",
+                maxHeight: keyboardInset > 0 ? `calc(100dvh - ${keyboardInset}px - 170px)` : "min(52dvh, 30rem)",
+              }}
+            >
+              <div className="flex shrink-0 items-center justify-between gap-2 px-4 pb-2 pt-3">
+                <div>
+                  <h2 className="!text-2xl text-cream">{PANEL_LABELS[activePanel]}</h2>
+                  <p className="text-[11px] font-semibold text-cream/50">{PANEL_HINTS[activePanel]}</p>
+                </div>
+                <button type="button" onClick={() => setSheetOpen(false)} aria-label="Cerrar panel" className="flex h-11 min-w-11 items-center justify-center gap-1 rounded-xl border-2 border-cream/25 px-2 text-[12px] font-black text-cream">
+                  <Check size={16} /> Hecho
+                </button>
+              </div>
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-5">
+                <PanelContent panel={activePanel} api={api} />
+              </div>
+            </motion.section>
+          ) : null}
+        </AnimatePresence>
+      ) : null}
+
+      {/* Barra de herramientas inferior (móvil, al alcance del pulgar) */}
+      {!isDesktop && keyboardInset === 0 ? (
+        <nav aria-label="Herramientas" className="relative z-[4] grid shrink-0 grid-cols-6 gap-1 border-t-2 border-cream/15 bg-ink px-1.5 pb-[max(.4rem,env(safe-area-inset-bottom))] pt-1.5">
+          {TOOLS.map((tool) => {
+            const active = sheetOpen && activePanel === tool.id;
+            return (
+              <button key={tool.id} type="button" onClick={() => onToolPress(tool.id)} aria-pressed={active} className={`flex h-[56px] flex-col items-center justify-center gap-1 rounded-xl border-2 text-[10px] font-black uppercase tracking-[.04em] transition-colors ${active ? "border-cream bg-orange text-ink" : "border-transparent text-cream/80"}`}>
+                <tool.icon size={20} />
+                {PANEL_LABELS[tool.id]}
+              </button>
+            );
+          })}
+        </nav>
+      ) : null}
+
+      <input
+        ref={fileRef}
+        type="file"
+        accept={IMAGE_INPUT_ACCEPT}
+        multiple
+        className="hidden"
+        data-testid="editor-photo-input"
+        onChange={(event) => {
+          const files = Array.from(event.target.files ?? []);
+          void handleFiles(files);
+        }}
+      />
+
+      <AnimatePresence>
+        {notice ? (
+          <motion.div
+            key="notice"
+            role="status"
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.16 }}
+            className={`pointer-events-none fixed left-1/2 top-[calc(4.5rem+env(safe-area-inset-top))] z-[6] flex -translate-x-1/2 items-center gap-2 rounded-full border-2 border-ink px-4 py-2 text-sm font-black text-ink shadow-hard-sm ${notice.tone === "ok" ? "bg-orange" : "bg-[#f2c5a0]"}`}
+          >
+            <Check size={16} /> {notice.text}
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {confirmClose ? (
+          <motion.div key="confirm" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[7] flex items-end justify-center bg-ink/70 p-4 backdrop-blur-sm sm:items-center">
+            <motion.div role="alertdialog" aria-modal="true" aria-labelledby="close-title" initial={{ y: 16 }} animate={{ y: 0 }} exit={{ y: 16 }} className="w-full max-w-sm rounded-[1.6rem] border-2 border-ink bg-cream p-5 text-ink shadow-hard">
+              <h2 id="close-title" className="!text-3xl">¿Cerrar sin guardar?</h2>
+              <p className="mt-2 text-sm font-semibold text-ink/65">Tienes cambios sin guardar en este scrapbook.</p>
+              <div className="mt-5 grid gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    save();
+                    setConfirmClose(false);
+                    onClose();
+                  }}
+                  className="flex min-h-12 items-center justify-center gap-2 rounded-xl border-2 border-ink bg-orange text-sm font-black shadow-hard-sm"
+                >
+                  <Save size={16} /> Guardar y cerrar
+                </button>
+                <button type="button" onClick={onClose} className="min-h-12 rounded-xl border-2 border-ink bg-white text-sm font-black">
+                  Cerrar sin guardar
+                </button>
+                <button type="button" onClick={() => setConfirmClose(false)} className="min-h-11 text-sm font-black underline">
+                  Seguir editando
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+    </div>
+  );
 }

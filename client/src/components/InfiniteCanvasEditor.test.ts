@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { CANVAS_IMAGE_ACCEPT, clampCanvasZoom, rotateCanvasElement, scaleCanvasElement } from "./InfiniteCanvasEditor";
+import { CANVAS_IMAGE_ACCEPT } from "./InfiniteCanvasEditor";
+import { clampCanvasZoom, clampElementScale, clampRotation, LIMITS } from "@/lib/composition";
 
 describe("infinite canvas uploads", () => {
   it("accepts the scrapbook image formats requested by the product", () => {
@@ -13,10 +14,13 @@ describe("infinite canvas uploads", () => {
   });
 
   it("keeps canvas transforms within safe editor limits", () => {
-    expect(clampCanvasZoom(0.1)).toBe(0.55);
-    expect(clampCanvasZoom(4)).toBe(1.6);
-    expect(rotateCanvasElement(-2, 15)).toBe(13);
-    expect(scaleCanvasElement(1.7, 0.3)).toBe(1.8);
-    expect(scaleCanvasElement(0.4, -0.2)).toBe(0.35);
+    expect(LIMITS.canvasZoom).toEqual({ min: 0.5, max: 2.5 });
+    expect(LIMITS.elementScale).toEqual({ min: 0.25, max: 3 });
+    expect(LIMITS.rotation).toEqual({ min: -180, max: 180 });
+    expect(clampCanvasZoom(0.1)).toBe(0.5);
+    expect(clampCanvasZoom(4)).toBe(2.5);
+    expect(clampElementScale(1.7 + 3)).toBe(3);
+    expect(clampElementScale(0.1)).toBe(0.25);
+    expect(clampRotation(-2 + 15)).toBe(13);
   });
 });

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Globe, Home, QrCode, ShoppingBag, UserRound } from "lucide-react";
 import { useLocation } from "wouter";
 import Dock, { type DockItem } from "@/components/Dock";
+import { useIsImmersive } from "@/lib/immersive";
 
 /** Evento global: Home abre el escáner QR cuando lo recibe. */
 export const SCAN_EVENT = "memento:scan";
@@ -36,6 +37,8 @@ export default function NavigationDock() {
   const [location, setLocation] = useLocation();
   const accent = accentForPath(location);
   const compact = useCompactDock();
+  // El editor y la vista a pantalla completa ocultan el dock para que no tape sus controles.
+  const immersive = useIsImmersive();
   const iconSize = compact ? 18 : 20;
 
   const items: DockItem[] = useMemo(() => [
@@ -76,6 +79,8 @@ export default function NavigationDock() {
       onClick: () => setLocation("/profile"),
     },
   ], [accent, compact, iconSize, location, setLocation]);
+
+  if (immersive) return null;
 
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-40 flex justify-center px-2 sm:bottom-5">

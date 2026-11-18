@@ -2,6 +2,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
 import SectionPage from "@/pages/SectionPage";
+import { MotionConfig } from "framer-motion";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import BrandCorner from "./components/BrandCorner";
@@ -27,12 +28,15 @@ export default function App() {
   return (
     <ErrorBoundary>
       <ThemeProvider defaultTheme="light">
+        {/* Respeta prefers-reduced-motion en todas las animaciones de Framer Motion */}
+        <MotionConfig reducedMotion="user">
         <TooltipProvider>
           <Toaster />
           <BrandCorner />
           <Router />
           <NavigationDock />
         </TooltipProvider>
+        </MotionConfig>
       </ThemeProvider>
     </ErrorBoundary>
   );

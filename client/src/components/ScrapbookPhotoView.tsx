@@ -1,27 +1,130 @@
 import { useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
-import { ArrowLeft, Edit3, Maximize2, MapPin, Sparkles, X } from "lucide-react";
+import { motion } from "framer-motion";
+import { ArrowLeft, CalendarDays, Camera, Clock3, Edit3, Layers3, Maximize2, MapPin, Users } from "lucide-react";
+import type { ScrapbookComposition } from "@/lib/composition";
+import { formatDate, relativeDate } from "@/lib/scrapbook-library";
 import type { Scrapbook } from "@/lib/scrapbooks";
-import type { CanvasElement } from "@/components/InfiniteCanvasEditor";
+import CompositionCanvas from "@/components/scrapbook/CompositionCanvas";
+import CompositionViewer from "@/components/scrapbook/CompositionViewer";
 
-function canvasFilter(filter: string) {
-  return filter === "noir" ? "grayscale(1) contrast(1.25)" : filter === "vintage" ? "sepia(.45) saturate(.82)" : filter === "vivid" ? "saturate(1.45) contrast(1.08)" : filter === "warm" ? "sepia(.25) saturate(1.2)" : "none";
+type Props = {
+  scrapbook: Scrapbook;
+  composition: ScrapbookComposition;
+  onBack: () => void;
+  onEdit: () => void;
+  onScan?: () => void;
+  /** Abre directamente la pantalla completa (deep link ?fullscreen). */
+  initialFullscreen?: boolean;
+};
+
+function Chip({ children, accent = false }: { children: React.ReactNode; accent?: boolean }) {
+  return <span className={`flex items-center gap-1.5 rounded-full border-2 border-ink px-3 py-1.5 text-xs font-black ${accent ? "bg-orange" : "bg-white/60"}`}>{children}</span>;
 }
 
-function ScrapbookComposition({ scrapbook, elements = [], fullscreen = false }: { scrapbook: Scrapbook; elements?: CanvasElement[]; fullscreen?: boolean }) {
-  return <div className={`relative aspect-[4/3] w-full overflow-hidden rounded-[1.2rem] border-2 border-ink bg-[#eae7da] ${fullscreen ? "max-w-6xl shadow-[10px_10px_0_rgba(234,231,218,.2)]" : ""}`}>
-    <img src={scrapbook.cover} alt="" className="absolute inset-0 h-full w-full object-cover" />
-    <div className="absolute inset-0 bg-gradient-to-br from-ink/10 via-transparent to-ink/75" />
-    {elements.filter((element) => element.type !== "photo").map((element) => <div key={element.id} style={{ left: `calc(50% + ${element.x / 2}px)`, top: `calc(50% + ${element.y / 2}px)`, transform: `translate(-50%, -50%) rotate(${element.rotation}deg) scale(${element.scale})`, zIndex: element.z, filter: canvasFilter(element.filter) }} className={`absolute ${element.type === "text" ? "rounded-lg border-2 border-ink bg-cream px-4 py-2 font-display text-2xl font-black text-ink shadow-hard-sm" : element.type === "sticker" ? "rounded-full border-2 border-ink bg-orange px-4 py-2 text-xs font-black text-ink shadow-hard-sm" : "h-[28%] w-[30%] border-4 border-orange"}`}>{element.type === "frame" ? null : element.content}</div>)}
-    <div className="absolute left-5 top-5 rotate-[-5deg] rounded-md border-2 border-ink bg-cream px-3 py-2 font-mono text-[9px] font-black uppercase tracking-[.12em] text-ink shadow-[3px_3px_0_#0B2130] sm:left-8 sm:top-8 sm:px-4 sm:py-3 sm:text-xs"><MapPin size={12} className="mr-1 inline text-orange" /> {scrapbook.location}</div>
-    <div className="absolute right-6 top-6 rotate-[8deg] text-4xl text-orange drop-shadow-[2px_2px_0_#EAE7DA] sm:right-12 sm:top-10 sm:text-6xl">✦</div>
-    <div className="absolute right-[18%] top-[22%] -rotate-6 rounded-sm border-2 border-ink bg-orange px-3 py-1 font-black text-[9px] uppercase tracking-[.18em] text-ink shadow-[3px_3px_0_#0B2130] sm:px-5 sm:py-2 sm:text-xs">recuerdo · 01</div>
-    <div className="absolute bottom-0 left-0 right-0 p-5 pt-28 text-cream sm:p-9 sm:pt-40"><div className="max-w-2xl"><p className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[.2em] text-orange sm:text-xs"><Sparkles size={13} /> {scrapbook.photos} fotos · {scrapbook.invited + 1} personas</p><h1 className="mt-2 font-display text-4xl font-black leading-[.9] tracking-[-.06em] sm:text-7xl">{scrapbook.title}</h1><p className="mt-3 max-w-lg text-xs font-medium leading-relaxed text-cream/80 sm:text-base">{scrapbook.description}</p></div></div>
-  </div>;
-}
+/**
+ * Vista previa del scrapbook: muestra la composición completa guardada (no
+ * solo la portada) con las acciones Editar y Ver arriba.
+ */
+export default function ScrapbookPhotoView({ scrapbook, composition, onBack, onEdit, initialFullscreen = false }: Props) {
+  const [fullscreen, setFullscreen] = useState(initialFullscreen);
+  const elementCount = composition.elements.length;
 
-export default function ScrapbookPhotoView({ scrapbook, elements, onBack, onEdit, onScan }: { scrapbook: Scrapbook; elements?: CanvasElement[]; onBack: () => void; onEdit: () => void; onScan: () => void }) {
-  const [fullscreen, setFullscreen] = useState(() => new URLSearchParams(window.location.search).has("fullscreen"));
-  const [dragged, setDragged] = useState(false);
-  return <main className="min-h-screen overflow-x-hidden bg-cream pb-28"><div className="mx-auto flex min-h-screen max-w-7xl flex-col px-4 pb-10 pt-24 sm:px-8 sm:pt-28 lg:px-12"><header className="flex items-center justify-between gap-3"><button type="button" onClick={onBack} className="flex items-center gap-2 text-xs font-black uppercase tracking-[.14em]"><span className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-ink bg-white/60"><ArrowLeft size={16} /></span><span className="hidden sm:inline">Todos los scrapbooks</span></button><span className="hidden sm:block" /><span className="rounded-full border-2 border-ink bg-orange px-3 py-1.5 text-[10px] font-black uppercase tracking-wider">{scrapbook.location}</span></header><section className="flex flex-1 flex-col items-center justify-center py-8"><div className="mb-6 flex items-center gap-2"><button type="button" onClick={onEdit} className="flex items-center gap-2 rounded-xl border-2 border-ink bg-orange px-4 py-2.5 text-xs font-black shadow-hard-sm"><Edit3 size={16} /> Editar</button><button type="button" onClick={() => setFullscreen(true)} className="flex items-center gap-2 rounded-xl border-2 border-ink bg-ink px-4 py-2.5 text-xs font-black text-cream shadow-hard-sm"><Maximize2 size={16} /> Ver</button></div><motion.div initial={{ opacity: 0, y: 10, rotate: -1 }} animate={{ opacity: 1, y: 0, rotate: 0 }} className="relative w-full max-w-5xl rounded-[1.75rem] border-2 border-ink bg-[#d6dfd8] p-3 shadow-hard"><ScrapbookComposition scrapbook={scrapbook} elements={elements} /><div className="pointer-events-none absolute bottom-5 left-7 rounded-full border-2 border-ink bg-cream px-3 py-1 text-[9px] font-black uppercase tracking-[.15em] text-ink sm:bottom-7 sm:left-8">Previsualización del scrapbook</div></motion.div></section></div><AnimatePresence>{fullscreen && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[60] flex items-center justify-center bg-ink/95 p-3 sm:p-6"><button type="button" onClick={() => setFullscreen(false)} aria-label="Salir de pantalla completa" className="absolute right-4 top-4 z-10 flex h-11 w-11 items-center justify-center rounded-full border-2 border-cream bg-cream text-ink shadow-hard-sm"><X size={21} /></button><div className="flex h-full w-full items-center justify-center overflow-hidden rounded-2xl border-2 border-cream/35 bg-[#1b3038] p-2 sm:p-5"><motion.div drag dragConstraints={{ left: -260, right: 260, top: -160, bottom: 160 }} dragElastic={.18} onDragStart={() => setDragged(true)} className="w-full max-w-6xl cursor-grab active:cursor-grabbing"><ScrapbookComposition scrapbook={scrapbook} elements={elements} fullscreen /></motion.div><span className="pointer-events-none absolute bottom-5 rounded-full border border-cream/30 bg-ink/65 px-4 py-2 text-[10px] font-black uppercase tracking-wider text-cream">{dragged ? "Puedes seguir moviendo la composición" : "Arrastra para explorar el scrapbook"}</span></div></motion.div>}</AnimatePresence></main>;
+  return (
+    <main className="min-h-screen overflow-x-hidden bg-cream pb-36">
+      <div className="mx-auto flex max-w-6xl flex-col px-4 pt-20 sm:px-8 sm:pt-24 lg:px-12">
+        <div className="flex items-center justify-between gap-3">
+          <button type="button" onClick={onBack} className="flex min-h-11 items-center gap-2 text-xs font-black uppercase tracking-[.14em]">
+            <span className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-ink bg-white/60">
+              <ArrowLeft size={17} />
+            </span>
+            <span>Scrapbooks</span>
+          </button>
+          <div className="flex items-center gap-2" role="toolbar" aria-label="Acciones del scrapbook">
+            <button
+              type="button"
+              onClick={onEdit}
+              className="flex min-h-11 items-center gap-2 rounded-xl border-2 border-ink bg-orange px-4 text-sm font-black shadow-hard-sm transition-transform hover:-translate-y-0.5 active:translate-y-0 active:shadow-none"
+            >
+              <Edit3 size={17} /> Editar
+            </button>
+            <button
+              type="button"
+              onClick={() => setFullscreen(true)}
+              className="flex min-h-11 items-center gap-2 rounded-xl border-2 border-ink bg-ink px-4 text-sm font-black text-cream shadow-hard-sm transition-transform hover:-translate-y-0.5 active:translate-y-0 active:shadow-none"
+            >
+              <Maximize2 size={17} /> Ver
+            </button>
+          </div>
+        </div>
+
+        <motion.section
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.25 }}
+          className="relative mx-auto mt-5 w-full rounded-[1.75rem] border-2 border-ink bg-[#D8E2DC] p-2.5 shadow-hard sm:p-3"
+          // La composición entera cabe en pantalla (también en formatos verticales).
+          style={{ maxWidth: `max(18rem, calc((100dvh - 15rem) * ${composition.canvas.width / composition.canvas.height}))` }}
+        >
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={() => setFullscreen(true)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                setFullscreen(true);
+              }
+            }}
+            aria-label="Ver la composición a pantalla completa"
+            className="block w-full cursor-zoom-in rounded-[1.2rem] text-left focus-visible:outline-3 focus-visible:outline-offset-4 focus-visible:outline-orange"
+          >
+            <CompositionCanvas
+              composition={composition}
+              label={`Previsualización de ${scrapbook.title}`}
+              className="rounded-[1.2rem] border-2 border-ink"
+              emptyState={
+                <div className="max-w-xs rounded-2xl border-2 border-ink bg-cream p-4 text-center shadow-hard-sm">
+                  <p className="font-display text-2xl">Página en blanco</p>
+                  <p className="mt-1 text-sm font-semibold text-ink/65">Pulsa Editar para añadir fotos, texto y decoración.</p>
+                </div>
+              }
+            />
+          </div>
+          <span className="pointer-events-none absolute bottom-5 left-5 rounded-full border-2 border-ink bg-cream px-3 py-1 text-[9px] font-black uppercase tracking-[.15em] sm:bottom-6 sm:left-6">
+            Previsualización
+          </span>
+        </motion.section>
+
+        <section className="mt-7 grid gap-5 lg:grid-cols-[1.3fr_1fr] lg:items-end">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[.2em] text-orange">Scrapbook · {scrapbook.country}</p>
+            <h1 className="mt-2 font-display">{scrapbook.title}</h1>
+            {scrapbook.description ? <p className="mt-3 max-w-xl text-base font-medium leading-relaxed text-ink/65">{scrapbook.description}</p> : null}
+          </div>
+          <div className="flex flex-wrap gap-2 lg:justify-end">
+            <Chip accent>
+              <MapPin size={14} /> {scrapbook.location}
+            </Chip>
+            <Chip>
+              <Camera size={14} /> {scrapbook.photos} fotos
+            </Chip>
+            <Chip>
+              <Users size={14} /> {scrapbook.invited + 1} personas
+            </Chip>
+            <Chip>
+              <Layers3 size={14} /> {elementCount} elementos
+            </Chip>
+            <Chip>
+              <Clock3 size={14} /> Editado {relativeDate(composition.updatedAt ?? scrapbook.updatedAt)}
+            </Chip>
+            <Chip>
+              <CalendarDays size={14} /> Creado {formatDate(scrapbook.createdAt)}
+            </Chip>
+          </div>
+        </section>
+      </div>
+
+      <CompositionViewer open={fullscreen} composition={composition} title={scrapbook.title} location={scrapbook.location} onClose={() => setFullscreen(false)} />
+    </main>
+  );
 }

@@ -1,14 +1,24 @@
+import type { ScrapbookComposition } from "./composition";
+
 export type Scrapbook = {
   id: string;
   title: string;
   description?: string;
   location: string;
   country: string;
+  /** Miniatura para identificar el viaje en Home. La experiencia principal es `composition`. */
   cover: string;
   photos: number;
   invited: number;
+  /** Texto heredado del scaffold; la UI usa `updatedAt`. */
   updated: string;
   palette: string;
+  latitude?: number;
+  longitude?: number;
+  createdAt: string;
+  updatedAt: string;
+  /** Composición guardada del lienzo (estado compartido del scrapbook). */
+  composition?: ScrapbookComposition;
 };
 
 export const demoScrapbooks: Scrapbook[] = [
@@ -23,6 +33,10 @@ export const demoScrapbooks: Scrapbook[] = [
     invited: 4,
     updated: "hace 2 horas",
     palette: "bg-[#d7dfd6]",
+    latitude: 37.0194,
+    longitude: -7.9304,
+    createdAt: "2026-06-14T09:30:00.000Z",
+    updatedAt: "2026-11-18T08:00:00.000Z",
   },
   {
     id: "lisboa-postales",
@@ -35,6 +49,10 @@ export const demoScrapbooks: Scrapbook[] = [
     invited: 7,
     updated: "ayer",
     palette: "bg-[#e7d8c2]",
+    latitude: 38.7223,
+    longitude: -9.1393,
+    createdAt: "2026-04-02T17:10:00.000Z",
+    updatedAt: "2026-11-17T19:20:00.000Z",
   },
   {
     id: "kyoto-spring",
@@ -47,5 +65,9 @@ export const demoScrapbooks: Scrapbook[] = [
     invited: 2,
     updated: "12 oct",
     palette: "bg-[#d8e2dc]",
+    latitude: 35.0116,
+    longitude: 135.7681,
+    createdAt: "2026-03-28T06:45:00.000Z",
+    updatedAt: "2026-10-12T12:00:00.000Z",
   },
 ];
