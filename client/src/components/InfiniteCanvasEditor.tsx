@@ -142,6 +142,7 @@ export default function InfiniteCanvasEditor({ scrapbook, initialComposition, on
   const [textFocusToken, setTextFocusToken] = useState(0);
   const [confirmClose, setConfirmClose] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState("Preparando fotos…");
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const photoRequest = useRef<PhotoRequest>({ kind: "add" });
@@ -219,12 +220,13 @@ export default function InfiniteCanvasEditor({ scrapbook, initialComposition, on
     if (files.length === 0) return;
     const request = photoRequest.current;
     setUploading(true);
+    setUploadStatus("Preparando fotos…");
     setUploadError(null);
     const prepared: PreparedImage[] = [];
     const errors: string[] = [];
     for (const file of files) {
       try {
-        prepared.push(await prepareImageForCanvas(file));
+        prepared.push(await prepareImageForCanvas(file, { onConverting: () => setUploadStatus("Convirtiendo foto HEIC…") }));
       } catch (error) {
         errors.push(error instanceof ImageUploadError ? error.message : `No se pudo leer “${file.name}”.`);
       }
@@ -240,7 +242,15 @@ export default function InfiniteCanvasEditor({ scrapbook, initialComposition, on
       src: image.src,
       naturalWidth: image.width,
       naturalHeight: image.height,
-      asset: { mimeType: image.mimeType, width: image.width, height: image.height, originalName: image.originalName, inline: true },
+      asset: {
+        mimeType: image.mimeType,
+        width: image.width,
+        height: image.height,
+        originalName: image.originalName,
+        originalMimeType: image.originalMimeType,
+        convertedFromHeic: image.convertedFromHeic || undefined,
+        inline: true,
+      },
     });
 
     if (request.kind === "replace") {
@@ -345,13 +355,14 @@ export default function InfiniteCanvasEditor({ scrapbook, initialComposition, on
       finishText,
       requestPhotos,
       uploading,
+      uploadStatus,
       uploadError,
       cropMode,
       setCropMode,
       textFocusToken,
       placementCenter,
     }),
-    [addText, apply, checkpoint, composition, cropMode, finishText, openPanel, placementCenter, requestPhotos, scrapbook.location, select, selected, state.future.length, state.past.length, textFocusToken, uploadError, uploading],
+    [addText, apply, checkpoint, composition, cropMode, finishText, openPanel, placementCenter, requestPhotos, scrapbook.location, select, selected, state.future.length, state.past.length, textFocusToken, uploadError, uploadStatus, uploading],
   );
 
   const onToolPress = (tool: Exclude<PanelId, "ajustes">) => {

@@ -58,6 +58,9 @@ export type AssetRef = {
   width?: number;
   height?: number;
   originalName?: string;
+  originalMimeType?: string;
+  /** true si el original era HEIC/HEIF y se convirtió a JPEG en el navegador. */
+  convertedFromHeic?: boolean;
   /** true cuando `src` es una data URL comprimida de prototipo (solo localStorage). */
   inline?: boolean;
 };

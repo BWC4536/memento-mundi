@@ -113,6 +113,7 @@ export type EditorApi = {
   finishText: () => void;
   requestPhotos: (request: PhotoRequest) => void;
   uploading: boolean;
+  uploadStatus: string;
   uploadError: string | null;
   cropMode: boolean;
   setCropMode: (value: boolean) => void;
@@ -509,10 +510,10 @@ export function PhotosPanel({ api }: { api: EditorApi }) {
             </ActionButton>
           ) : null}
           <ActionButton tone={selected?.type === "frame" ? "default" : "primary"} onClick={() => api.requestPhotos({ kind: "add" })} disabled={api.uploading}>
-            {api.uploading ? <Loader2 size={18} className="animate-spin" /> : <ImagePlus size={18} />} {api.uploading ? "Preparando fotos…" : "Añadir foto"}
+            {api.uploading ? <Loader2 size={18} className="animate-spin" /> : <ImagePlus size={18} />} {api.uploading ? api.uploadStatus : "Añadir foto"}
           </ActionButton>
         </div>
-        <p className="mt-2 text-[11px] font-semibold text-cream/50">Puedes elegir varias. JPG, JPEG, PNG, WEBP, HEIC y HEIF.</p>
+        <p className="mt-2 text-[11px] font-semibold text-cream/50">Puedes elegir varias. JPG, JPEG, PNG, WEBP, HEIC y HEIF. Las fotos HEIC del iPhone se convierten automáticamente.</p>
         {api.uploadError ? (
           <p role="alert" className="mt-2 rounded-xl border-2 border-[#f2c5a0]/60 bg-[#b44728]/25 px-3 py-2 text-[12px] font-bold text-[#fbe3cf]">
             {api.uploadError}

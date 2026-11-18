@@ -3,7 +3,8 @@
  *
  * - Acepta JPG, JPEG, PNG, WEBP, HEIC y HEIF.
  * - Decodifica con el navegador (Safari lee HEIC de forma nativa). Si el
- *   navegador no puede leer un HEIC/HEIF se devuelve un mensaje claro.
+ *   navegador no puede, convierte el HEIC/HEIF a JPEG en el cliente con
+ *   `heic-to` (libheif en WebAssembly), que se carga solo cuando hace falta.
  * - Redimensiona y comprime antes de guardarla. En el prototipo el resultado es
  *   una data URL (solo para localStorage); con Supabase el Blob comprimido se
  *   subirá a Storage y en la base de datos solo se guardará la URL/clave.
@@ -19,9 +20,70 @@ export const IMAGE_QUALITY = 0.82;
 export const MAX_INPUT_BYTES = 40 * 1024 * 1024;
 
 export const HEIC_UNSUPPORTED_MESSAGE =
-  "Este navegador no puede leer fotos HEIC/HEIF. Ábrela en Safari o expórtala como JPG (en iPhone: Ajustes › Cámara › Formatos › Más compatible) y vuelve a intentarlo.";
+  "No se pudo convertir esta foto HEIC/HEIF. Puede estar dañada o usar una variante no compatible. Expórtala como JPG (en iPhone: Ajustes › Cámara › Formatos › Más compatible) y vuelve a intentarlo.";
+
+const HEIC_BRANDS = new Set(["heic", "heix", "hevc", "hevx", "heim", "heis", "hevm", "hevs", "mif1", "msf1"]);
+
+/** Detecta HEIC/HEIF por los bytes del contenedor (caja "ftyp"), aunque la extensión mienta. */
+export function looksLikeHeic(header: Uint8Array) {
+  if (header.length < 12) return false;
+  const ascii = (start: number, end: number) => String.fromCharCode(...Array.from(header.subarray(start, end)));
+  return ascii(4, 8) === "ftyp" && HEIC_BRANDS.has(ascii(8, 12).replace(/\u0000/g, " ").trim());
+}
+
+async function readHeader(file: Blob) {
+  try {
+    return new Uint8Array(await file.slice(0, 12).arrayBuffer());
+  } catch {
+    return new Uint8Array();
+  }
+}
+
+/** Conversión HEIC → JPEG en el navegador. La librería (~3 MB) se descarga solo la primera vez que se necesita. */
+export async function convertHeicToJpeg(file: Blob): Promise<Blob> {
+  const { heicTo } = await import("heic-to");
+  return heicTo({ blob: file, type: "image/jpeg", quality: 0.92 });
+}
+
+export type DecodeStrategy<T> = {
+  decode: (blob: Blob) => Promise<T>;
+  convertHeic: (blob: Blob) => Promise<Blob>;
+  onConverting?: () => void;
+};
+
+/**
+ * Intenta leer la foto con el navegador; si no puede y es HEIC/HEIF, la
+ * convierte a JPEG y la vuelve a leer. Separado para poder testearlo.
+ */
+export async function decodeWithHeicFallback<T>(file: Blob, kind: ImageFileKind, strategy: DecodeStrategy<T>): Promise<{ decoded: T; converted: boolean }> {
+  try {
+    return { decoded: await strategy.decode(file), converted: false };
+  } catch (nativeError) {
+    const isHeic = kind === "heic" || looksLikeHeic(await readHeader(file));
+    if (!isHeic) throw nativeError;
+  }
+  strategy.onConverting?.();
+  let converted: Blob;
+  try {
+    converted = await strategy.convertHeic(file);
+  } catch {
+    throw new ImageUploadError(HEIC_UNSUPPORTED_MESSAGE);
+  }
+  try {
+    return { decoded: await strategy.decode(converted), converted: true };
+  } catch {
+    throw new ImageUploadError(HEIC_UNSUPPORTED_MESSAGE);
+  }
+}
 
 export type ImageFileKind = "standard" | "heic";
+
+export class ImageUploadError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ImageUploadError";
+  }
+}
 export type ImageClassification = { ok: true; kind: ImageFileKind } | { ok: false; message: string };
 
 const extensionOf = (name: string) => name.toLowerCase().split(".").pop() ?? "";
@@ -43,12 +105,6 @@ export function fitWithin(width: number, height: number, maxSide = MAX_IMAGE_SID
   return { width: Math.max(1, Math.round(width * ratio)), height: Math.max(1, Math.round(height * ratio)) };
 }
 
-export class ImageUploadError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "ImageUploadError";
-  }
-}
 
 export type PreparedImage = {
   src: string;
@@ -57,6 +113,8 @@ export type PreparedImage = {
   mimeType: string;
   originalName: string;
   originalMimeType: string;
+  /** true si era HEIC/HEIF y se convirtió en el navegador. */
+  convertedFromHeic: boolean;
   bytes: number;
 };
 
@@ -85,15 +143,26 @@ async function decodeImage(file: Blob): Promise<Decoded> {
 }
 
 /** Decodifica, redimensiona y comprime una foto para colocarla en el lienzo. */
-export async function prepareImageForCanvas(file: File, options: { maxSide?: number; quality?: number } = {}): Promise<PreparedImage> {
+export async function prepareImageForCanvas(
+  file: File,
+  options: { maxSide?: number; quality?: number; onConverting?: () => void; convertHeic?: (blob: Blob) => Promise<Blob> } = {},
+): Promise<PreparedImage> {
   const classification = classifyImageFile(file);
   if (!classification.ok) throw new ImageUploadError(classification.message);
 
   let decoded: Decoded;
+  let converted = false;
   try {
-    decoded = await decodeImage(file);
-  } catch {
-    throw new ImageUploadError(classification.kind === "heic" ? HEIC_UNSUPPORTED_MESSAGE : `No se pudo leer “${file.name}”. Prueba con otra foto.`);
+    const result = await decodeWithHeicFallback(file, classification.kind, {
+      decode: decodeImage,
+      convertHeic: options.convertHeic ?? convertHeicToJpeg,
+      onConverting: options.onConverting,
+    });
+    decoded = result.decoded;
+    converted = result.converted;
+  } catch (error) {
+    if (error instanceof ImageUploadError) throw error;
+    throw new ImageUploadError(`No se pudo leer “${file.name}”. Prueba con otra foto.`);
   }
 
   try {
@@ -118,6 +187,7 @@ export async function prepareImageForCanvas(file: File, options: { maxSide?: num
       mimeType,
       originalName: file.name,
       originalMimeType: file.type || `image/${extensionOf(file.name)}`,
+      convertedFromHeic: converted,
       bytes: Math.round((src.length - src.indexOf(",") - 1) * 0.75),
     };
   } finally {

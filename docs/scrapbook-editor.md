@@ -25,7 +25,7 @@ Editor, vista previa y pantalla completa usan el mismo renderizador (`Compositio
 | `client/src/lib/editor-snap.ts` | Guías de alineación e imán de rotación. |
 | `client/src/lib/composition-storage.ts` | Guardado temporal en localStorage. |
 | `client/src/lib/scrapbook-library.ts` | Estado compartido de scrapbooks: hidratar, aplicar y persistir composiciones. |
-| `client/src/lib/image-upload.ts` | Validación de formatos, HEIC y compresión en cliente. |
+| `client/src/lib/image-upload.ts` | Validación de formatos, conversión HEIC/HEIF y compresión en cliente. |
 | `client/src/lib/supabase-composition.ts` | Mapeo composición ↔ filas de Supabase (preparado, no conectado). |
 | `client/src/components/scrapbook/CompositionCanvas.tsx` | Renderizador único. |
 | `client/src/components/scrapbook/CompositionViewer.tsx` | Vista "Ver" a pantalla completa con arrastre y zoom. |
@@ -33,6 +33,14 @@ Editor, vista previa y pantalla completa usan el mismo renderizador (`Compositio
 | `client/src/components/editor/EditorStage.tsx` | Lienzo interactivo: selección, mover, escalar, rotar, pinch, pan, guías. |
 | `client/src/components/editor/EditorPanels.tsx` | Paneles Diseño, Elementos, Fotos, Texto, Filtros, Capas y Ajustes. |
 | `docs/supabase/002_scrapbook_editor.sql` | Migración aditiva con tablas, columnas, RLS y Storage. |
+
+## Fotos HEIC/HEIF
+
+- Safari las lee de forma nativa. En Chrome, Firefox y Android se convierten a JPEG en el navegador con `heic-to` (libheif en WebAssembly).
+- La librería pesa unos 3 MB y se descarga solo la primera vez que alguien sube una foto HEIC, en un chunk aparte.
+- También se detectan HEIC con extensión equivocada mirando los bytes del archivo.
+- Si la conversión falla, el editor muestra un mensaje en español con la alternativa de exportar a JPG.
+- `heic-to` usa licencia LGPL-3.0 (la de libheif). Se carga como módulo separado y sin modificar.
 
 ## Almacenamiento temporal (prototipo)
 
