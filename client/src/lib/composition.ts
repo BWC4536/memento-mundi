@@ -105,6 +105,8 @@ export type CanvasSettings = {
 
 export type ScrapbookComposition = {
   version: 1;
+  /** Página de Supabase donde vive esta composición (cuando está sincronizada). */
+  pageId?: string;
   canvas: CanvasSettings;
   elements: CanvasElement[];
   updatedAt: string;
@@ -887,8 +889,10 @@ export function sanitizeComposition(raw: unknown): ScrapbookComposition | null {
   const canvas = raw.canvas;
   const texture = canvas.texture as CanvasTexture;
   const frame = canvas.frame as CanvasFrame;
+  const pageId = str(raw.pageId);
   return {
     version: 1,
+    ...(pageId ? { pageId } : {}),
     canvas: compact<CanvasSettings>({
       width: Math.round(clamp(num(canvas.width, 1200), LIMITS.canvasSide.min, LIMITS.canvasSide.max)),
       height: Math.round(clamp(num(canvas.height, 900), LIMITS.canvasSide.min, LIMITS.canvasSide.max)),

@@ -19,6 +19,10 @@ export type Scrapbook = {
   updatedAt: string;
   /** Composición guardada del lienzo (estado compartido del scrapbook). */
   composition?: ScrapbookComposition;
+  /** "cloud" si viene de Supabase; "local" para los de demo y los del navegador. */
+  source?: "cloud" | "local";
+  ownerId?: string;
+  isPublic?: boolean;
 };
 
 export const demoScrapbooks: Scrapbook[] = [

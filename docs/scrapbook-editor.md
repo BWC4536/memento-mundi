@@ -54,17 +54,28 @@ Editor, vista previa y pantalla completa usan el mismo renderizador (`Compositio
 
 ## Supabase
 
-Proyecto: `https://iurldpjhpjkfpnabllxa.supabase.co`. La URL y la clave publicable se leen de `VITE_SUPABASE_URL` y `VITE_SUPABASE_PUBLISHABLE_KEY` (`.env.local` en local, variables de entorno en Vercel). Ver `.env.example`.
+Proyecto `MementoMundi` (`https://iurldpjhpjkfpnabllxa.supabase.co`). La app lo usa cuando existen `VITE_SUPABASE_URL` y `VITE_SUPABASE_PUBLISHABLE_KEY` (`.env.local` en local, Environment Variables en Vercel; ver `.env.example`). Sin esas variables funciona en modo local con los scrapbooks de demo.
 
-Estado comprobado del proyecto (18 nov 2026):
+Migraciones aplicadas el 18 nov 2026: `002_scrapbook_editor.sql` y `003_harden_functions.sql`.
 
-- Las políticas RLS actuales de `scrapbooks` y `scrapbook_members` se llaman entre sí y cualquier lectura falla con "infinite recursion detected in policy".
-- No existen `scrapbook_pages`, las columnas de posición de `scrapbook_elements`, `scrapbook_assets` ni el bucket `scrapbook-media`.
-- Solo está activo el login por email de Supabase Auth.
+### Cómo funciona
 
-Pasos:
+- **Login:** Supabase Auth por email, sin contraseña. Se envía un código de 6 dígitos o un enlace mágico (`client/src/lib/supabase/auth.ts`, `LoginDialog.tsx`). La sesión se guarda en el navegador y se renueva sola.
+- **Datos:** `client/src/lib/supabase/scrapbook-repository.ts` lista, crea y borra scrapbooks y guarda la composición en `scrapbook_pages` + `scrapbook_elements`.
+- **Fotos:** al guardar, cada foto nueva se sube al bucket privado `scrapbook-media` (`<scrapbook_id>/<user_id>/<asset_id>.<ext>`) y se registra en `scrapbook_assets`. La base de datos solo guarda la referencia `storage://scrapbook-media/<ruta>`; al cargar se convierte en URL firmada (7 días).
+- **Portada:** la primera foto de la composición pasa a ser la portada del scrapbook.
+- **Sin conexión:** si falla el guardado, la composición se conserva en este dispositivo (localStorage) y el editor avisa; al volver a guardar con conexión se sincroniza.
+- **Cliente propio:** se usa `fetch` contra la API REST de Supabase en lugar de `@supabase/supabase-js` para no añadir dependencias (el disco del proyecto es exFAT y pnpm no puede enlazarlas).
 
-1. Ejecutar `docs/supabase/002_scrapbook_editor.sql` completo en el SQL Editor. Es autocontenida (no hace falta la 001), idempotente y no borra datos. Sustituye las políticas RLS de las tablas de scrapbooks para eliminar la recursión.
-2. Elegir cómo se identifican los usuarios ante Supabase (la app usa hoy el login de Manus, que Supabase no reconoce).
-3. Subir cada foto al bucket privado `scrapbook-media` con la ruta `<scrapbook_id>/<user_id>/<asset_id>.<ext>` (`buildAssetStoragePath`) y registrarla en `scrapbook_assets`.
-4. Guardar con `compositionToRows` (exige ids uuid y URLs, nunca data URLs; usar `ensureUuidIds` con composiciones locales antiguas) y leer con `rowsToComposition`.
+### Configuración pendiente en el panel de Supabase
+
+1. **Authentication › URL Configuration:** Site URL `https://memento-mundi-nine.vercel.app` y en Redirect URLs `https://memento-mundi-nine.vercel.app/**`, los dominios de preview de Vercel y `http://localhost:*/**`. Sin esto el enlace mágico no vuelve a la app.
+2. **Authentication › Email Templates › Magic Link:** añadir `{{ .Token }}` al texto para que el email incluya el código de 6 dígitos (por defecto solo trae el enlace).
+3. **Authentication › SMTP Settings:** el servicio de email incluido en Supabase tiene un límite muy bajo y solo envía a miembros del equipo del proyecto. Para usuarios reales hace falta un SMTP propio (Resend, Postmark, SES...).
+
+### Limitaciones conocidas
+
+- Una página por scrapbook (la tabla admite varias; la interfaz edita la primera).
+- Edición simultánea: gana el último en guardar; no hay tiempo real.
+- Al guardar, `created_by` de cada elemento pasa a ser quien guarda.
+- Los scrapbooks creados antes en modo local (navegador) no se migran solos a la nube.

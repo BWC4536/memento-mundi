@@ -1,31 +1,22 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowUpRight, Camera, ChevronRight, Clock3, Ellipsis, FilePlus2, MapPin, Pencil, Plus, Search, Share2, ShoppingBag, Sparkles, Trash2, UserRound, Users, X } from "lucide-react";
-import { useAuth } from "@/_core/hooks/useAuth";
-import { startLogin } from "@/const";
+import { ArrowUpRight, Camera, ChevronRight, Clock3, CloudOff, Ellipsis, FilePlus2, Loader2, LogOut, MapPin, Pencil, Plus, RotateCcw, Search, Share2, ShoppingBag, Sparkles, Trash2, UserRound, Users, X } from "lucide-react";
+import { toast } from "sonner";
 import { useLocation } from "wouter";
 import { HOME_EVENT, SCAN_EVENT } from "@/components/NavigationDock";
 import CharacterGuide from "@/components/CharacterGuide";
-import InfiniteCanvasEditor, { type SaveFeedback } from "@/components/InfiniteCanvasEditor";
+import InfiniteCanvasEditor from "@/components/InfiniteCanvasEditor";
 import QrScannerDialog from "@/components/QrScannerDialog";
 import ScrapbookPhotoView from "@/components/ScrapbookPhotoView";
-import type { ScrapbookComposition } from "@/lib/composition";
-import {
-  applyCompositionToScrapbooks,
-  createScrapbookDraft,
-  forgetScrapbook,
-  getScrapbookComposition,
-  hydrateScrapbooks,
-  persistComposition,
-  relativeDate,
-  saveCustomScrapbooks,
-} from "@/lib/scrapbook-library";
+import { useAppAuth } from "@/hooks/useAppAuth";
+import { useScrapbookLibrary } from "@/hooks/useScrapbookLibrary";
+import { getScrapbookComposition, relativeDate } from "@/lib/scrapbook-library";
 import type { Scrapbook } from "@/lib/scrapbooks";
 
 type Modal = "create" | "share" | "invite" | "scan" | "editor" | null;
 
-function BrandHeader({ userName, onProfile }: { userName?: string | null; onProfile: () => void }) {
-  return <header className="flex items-center justify-end"><button type="button" onClick={onProfile} className="flex items-center gap-2 rounded-full border-2 border-ink bg-white/60 px-3 py-2 text-xs font-black uppercase tracking-[0.1em] transition-transform hover:-translate-y-0.5 active:scale-[.97]"><span className="hidden sm:inline">{userName?.split(" ")[0] ?? "Entrar"}</span><span className="flex h-7 w-7 items-center justify-center rounded-full bg-ink text-cream"><UserRound size={15} /></span></button></header>;
+function BrandHeader({ userName, onProfile, onSignOut }: { userName?: string | null; onProfile: () => void; onSignOut?: () => void }) {
+  return <header className="flex items-center justify-end gap-2">{onSignOut ? <button type="button" onClick={onSignOut} aria-label="Cerrar sesión" title="Cerrar sesión" className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-ink bg-white/60 transition-transform hover:-translate-y-0.5"><LogOut size={16} /></button> : null}<button type="button" onClick={onProfile} className="flex items-center gap-2 rounded-full border-2 border-ink bg-white/60 px-3 py-2 text-xs font-black uppercase tracking-[0.1em] transition-transform hover:-translate-y-0.5 active:scale-[.97]"><span className="hidden sm:inline">{userName?.split(" ")[0] ?? "Entrar"}</span><span className="flex h-7 w-7 items-center justify-center rounded-full bg-ink text-cream"><UserRound size={15} /></span></button></header>;
 }
 
 function QuickMenu({ onClose, onShare, onInvite, onEdit, onDelete }: { onClose: () => void; onShare: () => void; onInvite: () => void; onEdit: () => void; onDelete: () => void }) {
@@ -37,10 +28,13 @@ function Dialog({ children, onClose, wide = false }: { children: React.ReactNode
 }
 
 export default function Home() {
-  const { user, isAuthenticated } = useAuth();
+  const auth = useAppAuth();
+  const { user, isAuthenticated } = auth;
   const [, setLocation] = useLocation();
-  // Estado compartido: los scrapbooks (con su composición) viven aquí, no en el editor.
-  const [scrapbooks, setScrapbooks] = useState<Scrapbook[]>(() => hydrateScrapbooks());
+  // Estado compartido: los scrapbooks (con su composición) viven aquí (Supabase o local), no en el editor.
+  const library = useScrapbookLibrary(user, auth.provider);
+  const { scrapbooks } = library;
+  const [creating, setCreating] = useState(false);
   // Guardamos el id, no una copia: así la vista previa siempre lee la composición actualizada.
   const [selectedId, setSelectedId] = useState<string | null>(() => {
     const params = new URLSearchParams(window.location.search);
@@ -56,20 +50,20 @@ export default function Home() {
   const filtered = useMemo(() => scrapbooks.filter((book) => `${book.title} ${book.location}`.toLowerCase().includes(search.toLowerCase()) && (activeTab === "Todos" || book.country === activeTab)), [activeTab, search, scrapbooks]);
   const selected = scrapbooks.find((book) => book.id === selectedId) ?? null;
   const setSelected = (book: Scrapbook | null) => setSelectedId(book?.id ?? null);
-  const selectedComposition = useMemo(() => (selected ? getScrapbookComposition(selected) : null), [selected]);
+  const compositionStatus = selected ? library.compositionStatus(selected.id) : "ready";
+  const selectedComposition = useMemo(() => (selected && (selected.composition || compositionStatus === "ready") ? getScrapbookComposition(selected) : null), [selected, compositionStatus]);
+  const { ensureComposition } = library;
 
-  useEffect(() => saveCustomScrapbooks(scrapbooks), [scrapbooks]);
+  useEffect(() => {
+    if (selectedId) void ensureComposition(selectedId);
+  }, [ensureComposition, selectedId]);
 
-  /** Guardar del editor: actualiza el scrapbook seleccionado y lo respalda en localStorage. */
-  const saveComposition = useCallback((scrapbookId: string, composition: ScrapbookComposition): SaveFeedback => {
-    setScrapbooks((items) => applyCompositionToScrapbooks(items, scrapbookId, composition));
-    const result = persistComposition(scrapbookId, composition);
-    return result.ok ? { persisted: true } : { persisted: false, message: result.message };
-  }, []);
-
-  const deleteScrapbook = (id: string) => {
-    forgetScrapbook(id);
-    setScrapbooks((items) => items.filter((item) => item.id !== id));
+  const deleteScrapbook = async (id: string) => {
+    try {
+      await library.deleteScrapbook(id);
+    } catch {
+      toast.error("No se pudo borrar el scrapbook. Inténtalo de nuevo.");
+    }
   };
 
   // El dock global (App) abre el escáner aquí: por evento si ya estamos en "/", o con ?scan=1 si venimos de otra ruta.
@@ -91,20 +85,32 @@ export default function Home() {
     };
   }, []);
 
-  const addScrapbook = () => {
-    if (!newTitle.trim()) return;
-    const created = createScrapbookDraft(newTitle, newDescription);
-    setScrapbooks((items) => [created, ...items]);
-    setNewTitle("");
-    setNewDescription("");
-    setModal(null);
-    setSelected(created);
+  const addScrapbook = async () => {
+    if (!newTitle.trim() || creating) return;
+    setCreating(true);
+    try {
+      const created = await library.createScrapbook(newTitle, newDescription);
+      setNewTitle("");
+      setNewDescription("");
+      setModal(null);
+      setSelected(created);
+    } catch {
+      toast.error("No se pudo crear el scrapbook. Revisa tu conexión e inténtalo de nuevo.");
+    } finally {
+      setCreating(false);
+    }
   };
+
+  if (auth.loading) return (
+    <main className="flex min-h-screen items-center justify-center bg-[#EAE7DA]" aria-busy="true">
+      <Loader2 className="animate-spin text-ink/50" size={28} aria-label="Cargando" />
+    </main>
+  );
 
   if (!isAuthenticated) return (
     <main className="min-h-screen pb-32 bg-[#EAE7DA] overflow-x-hidden">
       <div className="mx-auto max-w-7xl px-4 pb-10 pt-5 sm:px-8 lg:px-12">
-        <BrandHeader userName={undefined} onProfile={() => startLogin()} />
+        <BrandHeader userName={undefined} onProfile={() => auth.openLogin()} />
         <section className="mt-14 sm:mt-20 flex flex-col items-center text-center">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .5 }} className="relative">
             <div className="mx-auto flex h-28 w-28 sm:h-32 sm:w-32 items-center justify-center rounded-[2.5rem] border-2 border-ink bg-orange/20 shadow-hard">
@@ -134,7 +140,7 @@ export default function Home() {
             <button type="button" onClick={() => setLocation("/store")} className="flex items-center gap-3 rounded-2xl border-2 border-ink bg-orange px-7 py-4 text-sm font-black shadow-hard transition-transform hover:-translate-y-1 active:scale-[.97]">
               <ShoppingBag size={19} /> Ir a la tienda <ArrowUpRight size={18} />
             </button>
-            <button type="button" onClick={() => startLogin()} className="flex items-center gap-2 rounded-2xl border-2 border-ink bg-white/70 px-6 py-4 text-sm font-black transition-transform hover:-translate-y-0.5">
+            <button type="button" onClick={() => auth.openLogin()} className="flex items-center gap-2 rounded-2xl border-2 border-ink bg-white/70 px-6 py-4 text-sm font-black transition-transform hover:-translate-y-0.5">
               Iniciar sesión <ChevronRight size={16} />
             </button>
           </motion.div>
@@ -183,6 +189,27 @@ export default function Home() {
     </main>
   );
 
+  if (selected && !selectedComposition) return (
+    <main className="flex min-h-screen flex-col items-center justify-center gap-4 bg-cream px-6 text-center" aria-busy={compositionStatus === "loading"}>
+      {compositionStatus === "error" ? (
+        <>
+          <CloudOff size={32} />
+          <p className="font-display text-3xl">No se pudo abrir “{selected.title}”.</p>
+          <p className="max-w-sm text-sm font-semibold text-ink/60">Revisa tu conexión e inténtalo de nuevo.</p>
+          <div className="flex gap-2">
+            <button type="button" onClick={() => void ensureComposition(selected.id, true)} className="flex min-h-11 items-center gap-2 rounded-xl border-2 border-ink bg-orange px-4 text-sm font-black shadow-hard-sm"><RotateCcw size={16} /> Reintentar</button>
+            <button type="button" onClick={() => setSelected(null)} className="min-h-11 rounded-xl border-2 border-ink bg-white/70 px-4 text-sm font-black">Volver</button>
+          </div>
+        </>
+      ) : (
+        <>
+          <Loader2 className="animate-spin" size={28} />
+          <p className="text-sm font-black uppercase tracking-[.16em] text-ink/60">Abriendo “{selected.title}”…</p>
+        </>
+      )}
+    </main>
+  );
+
   if (selected && selectedComposition) return (
     <>
       <ScrapbookPhotoView
@@ -198,7 +225,7 @@ export default function Home() {
         <InfiniteCanvasEditor
           scrapbook={selected}
           initialComposition={selectedComposition}
-          onSave={(composition) => saveComposition(selected.id, composition)}
+          onSave={(composition) => library.saveComposition(selected.id, composition)}
           onClose={() => setModal(null)}
         />
       )}
@@ -206,5 +233,5 @@ export default function Home() {
     </>
   );
 
-  return <main className="min-h-screen overflow-x-hidden pb-32 bg-[#EAE7DA]"><div className="mx-auto max-w-7xl px-4 pb-10 pt-5 sm:px-8 lg:px-12"><BrandHeader userName={isAuthenticated ? user?.name : undefined} onProfile={() => isAuthenticated ? setLocation("/profile") : startLogin()} /><section className="mt-14 flex flex-col justify-between gap-7 lg:flex-row lg:items-end"><div><motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="inline-flex items-center gap-2 rounded-full border-2 border-ink bg-white/50 px-3 py-1.5 text-[10px] font-black uppercase tracking-[.16em] shadow-hard-sm"><Sparkles size={13} className="text-orange" fill="currentColor" /> Tu colección personal</motion.div><motion.h1 initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: .06 }} className="mt-5 font-display text-5xl sm:text-7xl lg:text-8xl font-black leading-[.88] tracking-[-.07em] break-words">Tus<br /><span className="text-orange">scrapbooks.</span></motion.h1><p className="mt-6 max-w-lg text-sm sm:text-base font-medium leading-relaxed text-ink/65">Tus viajes, tus fotos y las personas que los hacen inolvidables. Cada historia empieza con una página en blanco.</p></div><div className="flex flex-col gap-4 sm:flex-row sm:items-center"><CharacterGuide character="arturo" speech="¡Qué recuerdos! Aquí están guardados todos tus destinos para revivirlos cuando quieras." /><button type="button" onClick={() => setModal("create")} className="flex w-fit items-center gap-3 rounded-2xl border-2 border-ink bg-orange px-5 py-3.5 text-sm font-black shadow-hard transition-transform hover:-translate-y-1 active:scale-[.97] shrink-0"><FilePlus2 size={19} /> Nuevo scrapbook <ArrowUpRight size={18} /></button></div></section><section className="mt-14 flex flex-col justify-between gap-4 border-b-2 border-ink/15 pb-4 sm:flex-row sm:items-center"><div className="flex gap-2 flex-wrap"><button type="button" onClick={() => setActiveTab("Todos")} className={`rounded-full border-2 border-ink px-4 py-2 text-xs font-black ${activeTab === "Todos" ? "bg-ink text-cream" : "bg-white/50"}`}>Todos · {scrapbooks.length}</button><button type="button" onClick={() => setActiveTab("Portugal")} className={`rounded-full border-2 border-ink px-4 py-2 text-xs font-black ${activeTab === "Portugal" ? "bg-orange" : "bg-white/50"}`}>Portugal</button><button type="button" onClick={() => setActiveTab("Japón")} className={`rounded-full border-2 border-ink px-4 py-2 text-xs font-black ${activeTab === "Japón" ? "bg-orange" : "bg-white/50"}`}>Japón</button></div><label className="flex items-center gap-2 rounded-full border-2 border-ink bg-white/50 px-3 py-2 text-xs font-bold text-ink/60"><Search size={15} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar recuerdos" className="w-36 bg-transparent outline-none placeholder:text-ink/45" /></label></section><section className="mt-7 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{filtered.map((book, index) => <motion.article key={book.id} initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * .08 }} onClick={() => setSelected(book)} className={`group relative overflow-visible rounded-[1.75rem] border-2 border-ink ${book.palette} p-3 shadow-hard transition-transform hover:-translate-y-1`}><div className="relative overflow-hidden rounded-[1.25rem] border-2 border-ink"><img src={book.cover} alt={`Portada de ${book.title}`} className="h-64 w-full object-cover transition-transform duration-500 group-hover:scale-105" /><div className="absolute left-3 top-3 rounded-full border-2 border-ink bg-cream px-2.5 py-1 text-[10px] font-black uppercase tracking-wider">{book.photos} fotos</div><button type="button" aria-label={`Añadir foto a ${book.title}`} onClick={(event) => { event.stopPropagation(); setSelected(book); setModal("editor"); }} className="absolute bottom-3 right-3 flex h-11 w-11 items-center justify-center rounded-xl border-2 border-ink bg-orange shadow-hard-sm transition-transform hover:-translate-y-1"><Camera size={19} /></button></div><button type="button" aria-label={`Más opciones para ${book.title}`} onClick={(event) => { event.stopPropagation(); setMenu(menu === book.id ? null : book.id); }} className="absolute right-5 top-5 z-20 flex h-9 w-9 items-center justify-center rounded-full border-2 border-ink bg-cream"><Ellipsis size={18} /></button>{menu === book.id && <QuickMenu onClose={() => setMenu(null)} onShare={() => setModal("share")} onInvite={() => setModal("invite")} onEdit={() => { setSelected(book); setModal("editor"); }} onDelete={() => deleteScrapbook(book.id)} />}<div className="px-1 pb-1 pt-4"><p className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[.17em] text-ink/60"><MapPin size={12} /> {book.location}</p><h2 className="mt-2 font-display text-3xl font-black tracking-tight">{book.title}</h2><p className="mt-2 min-h-10 text-sm font-medium leading-relaxed text-ink/60">{book.description}</p><div className="mt-4 flex items-center justify-between border-t-2 border-ink/20 pt-3 text-xs font-bold"><span className="flex items-center gap-1.5"><Users size={14} /> {book.invited + 1} personas</span><span className="flex items-center gap-1.5 text-ink/55"><Clock3 size={13} /> {relativeDate(book.updatedAt)}</span><span className="flex items-center gap-1">Abrir <ChevronRight size={15} /></span></div></div></motion.article>)}</section>{filtered.length === 0 && <div className="mt-10 rounded-[1.75rem] border-2 border-dashed border-ink bg-white/45 p-10 text-center"><p className="font-display text-3xl font-black">Todavía no hay páginas aquí.</p><p className="mt-2 text-sm font-medium text-ink/60">Prueba otra búsqueda o empieza un scrapbook nuevo.</p></div>}<section className="mt-16 rounded-[2rem] border-2 border-ink bg-ink p-6 text-cream shadow-hard sm:p-8"><div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-center"><div><p className="text-[10px] font-black uppercase tracking-[.2em] text-orange">Tu siguiente recuerdo</p><h2 className="mt-2 font-display text-3xl font-black tracking-tight">Una foto puede abrir otra página.</h2></div><button type="button" onClick={() => setModal("create")} className="flex w-fit items-center gap-2 rounded-xl border-2 border-cream bg-orange px-4 py-3 text-sm font-black text-ink shadow-[3px_3px_0_#EAE7DA]"><Plus size={17} /> Crear scrapbook</button></div></section></div><AnimatePresence>{modal === "create" && <Dialog onClose={() => setModal(null)}><div className="pr-8"><p className="text-[10px] font-black uppercase tracking-[.18em] text-orange">Nueva historia</p><h2 className="mt-2 font-display text-4xl font-black tracking-[-.06em]">¿Cómo se llama este viaje?</h2></div><label className="mt-7 block text-xs font-black uppercase tracking-wider">Título<input autoFocus value={newTitle} onChange={(event) => setNewTitle(event.target.value)} onKeyDown={(event) => event.key === "Enter" && addScrapbook()} placeholder="Ej. Verano sin mapa" className="mt-2 w-full rounded-xl border-2 border-ink bg-white/70 px-4 py-3 font-display text-xl font-black outline-none focus:ring-4 focus:ring-orange/40" /></label><label className="mt-4 block text-xs font-black uppercase tracking-wider">Descripción opcional<textarea value={newDescription} onChange={(event) => setNewDescription(event.target.value)} placeholder="Unas palabras para recordar el contexto..." className="mt-2 min-h-24 w-full resize-none rounded-xl border-2 border-ink bg-white/70 px-4 py-3 text-sm font-medium outline-none focus:ring-4 focus:ring-orange/40" /></label><button type="button" onClick={addScrapbook} className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl border-2 border-ink bg-orange px-4 py-3 text-sm font-black shadow-hard-sm"><FilePlus2 size={17} /> Crear scrapbook</button></Dialog>}{(modal === "share" || modal === "invite") && <Dialog onClose={() => setModal(null)}><div className="flex h-14 w-14 items-center justify-center rounded-2xl border-2 border-ink bg-orange shadow-hard-sm">{modal === "share" ? <Share2 /> : <Users />}</div><h2 className="mt-6 font-display text-3xl font-black">{modal === "share" ? "Comparte la historia." : "Invita a tu gente."}</h2><p className="mt-3 text-sm font-medium leading-relaxed text-ink/65">{modal === "share" ? "Copia un enlace para que tus acompañantes puedan ver y aportar recuerdos al scrapbook." : "Añade personas por email y decidid juntos qué momentos se quedan en la página."}</p><div className="mt-6 flex gap-2"><input placeholder={modal === "share" ? "memento.mundi/algarve-2026" : "email@amigo.com"} className="min-w-0 flex-1 rounded-xl border-2 border-ink bg-white/70 px-3 py-3 text-sm outline-none" /><button type="button" onClick={() => setModal(null)} className="rounded-xl border-2 border-ink bg-orange px-4 py-3 text-sm font-black">{modal === "share" ? "Copiar" : "Añadir"}</button></div></Dialog>}{modal === "scan" && <QrScannerDialog onClose={() => setModal(null)} onDetected={() => { if (scrapbooks[0]) { setSelected(scrapbooks[0]); setModal("editor"); } else setModal(null); }} />}</AnimatePresence></main>;
+  return <main className="min-h-screen overflow-x-hidden pb-32 bg-[#EAE7DA]"><div className="mx-auto max-w-7xl px-4 pb-10 pt-5 sm:px-8 lg:px-12"><BrandHeader userName={isAuthenticated ? user?.name : undefined} onProfile={() => isAuthenticated ? setLocation("/profile") : auth.openLogin()} onSignOut={isAuthenticated ? () => { setSelected(null); void auth.signOut(); } : undefined} /><section className="mt-14 flex flex-col justify-between gap-7 lg:flex-row lg:items-end"><div><motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="inline-flex items-center gap-2 rounded-full border-2 border-ink bg-white/50 px-3 py-1.5 text-[10px] font-black uppercase tracking-[.16em] shadow-hard-sm"><Sparkles size={13} className="text-orange" fill="currentColor" /> Tu colección personal</motion.div><motion.h1 initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: .06 }} className="mt-5 font-display text-5xl sm:text-7xl lg:text-8xl font-black leading-[.88] tracking-[-.07em] break-words">Tus<br /><span className="text-orange">scrapbooks.</span></motion.h1><p className="mt-6 max-w-lg text-sm sm:text-base font-medium leading-relaxed text-ink/65">Tus viajes, tus fotos y las personas que los hacen inolvidables. Cada historia empieza con una página en blanco.</p></div><div className="flex flex-col gap-4 sm:flex-row sm:items-center"><CharacterGuide character="arturo" speech="¡Qué recuerdos! Aquí están guardados todos tus destinos para revivirlos cuando quieras." /><button type="button" onClick={() => setModal("create")} className="flex w-fit items-center gap-3 rounded-2xl border-2 border-ink bg-orange px-5 py-3.5 text-sm font-black shadow-hard transition-transform hover:-translate-y-1 active:scale-[.97] shrink-0"><FilePlus2 size={19} /> Nuevo scrapbook <ArrowUpRight size={18} /></button></div></section><section className="mt-14 flex flex-col justify-between gap-4 border-b-2 border-ink/15 pb-4 sm:flex-row sm:items-center"><div className="flex gap-2 flex-wrap"><button type="button" onClick={() => setActiveTab("Todos")} className={`rounded-full border-2 border-ink px-4 py-2 text-xs font-black ${activeTab === "Todos" ? "bg-ink text-cream" : "bg-white/50"}`}>Todos · {scrapbooks.length}</button><button type="button" onClick={() => setActiveTab("Portugal")} className={`rounded-full border-2 border-ink px-4 py-2 text-xs font-black ${activeTab === "Portugal" ? "bg-orange" : "bg-white/50"}`}>Portugal</button><button type="button" onClick={() => setActiveTab("Japón")} className={`rounded-full border-2 border-ink px-4 py-2 text-xs font-black ${activeTab === "Japón" ? "bg-orange" : "bg-white/50"}`}>Japón</button></div><label className="flex items-center gap-2 rounded-full border-2 border-ink bg-white/50 px-3 py-2 text-xs font-bold text-ink/60"><Search size={15} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar recuerdos" className="w-36 bg-transparent outline-none placeholder:text-ink/45" /></label></section><section className="mt-7 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{filtered.map((book, index) => <motion.article key={book.id} initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * .08 }} onClick={() => setSelected(book)} className={`group relative overflow-visible rounded-[1.75rem] border-2 border-ink ${book.palette} p-3 shadow-hard transition-transform hover:-translate-y-1`}><div className="relative overflow-hidden rounded-[1.25rem] border-2 border-ink"><img src={book.cover} alt={`Portada de ${book.title}`} className="h-64 w-full object-cover transition-transform duration-500 group-hover:scale-105" /><div className="absolute left-3 top-3 rounded-full border-2 border-ink bg-cream px-2.5 py-1 text-[10px] font-black uppercase tracking-wider">{book.photos} fotos</div><button type="button" aria-label={`Añadir foto a ${book.title}`} onClick={(event) => { event.stopPropagation(); setSelected(book); setModal("editor"); }} className="absolute bottom-3 right-3 flex h-11 w-11 items-center justify-center rounded-xl border-2 border-ink bg-orange shadow-hard-sm transition-transform hover:-translate-y-1"><Camera size={19} /></button></div><button type="button" aria-label={`Más opciones para ${book.title}`} onClick={(event) => { event.stopPropagation(); setMenu(menu === book.id ? null : book.id); }} className="absolute right-5 top-5 z-20 flex h-9 w-9 items-center justify-center rounded-full border-2 border-ink bg-cream"><Ellipsis size={18} /></button>{menu === book.id && <QuickMenu onClose={() => setMenu(null)} onShare={() => setModal("share")} onInvite={() => setModal("invite")} onEdit={() => { setSelected(book); setModal("editor"); }} onDelete={() => void deleteScrapbook(book.id)} />}<div className="px-1 pb-1 pt-4"><p className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[.17em] text-ink/60"><MapPin size={12} /> {book.location}</p><h2 className="mt-2 font-display text-3xl font-black tracking-tight">{book.title}</h2><p className="mt-2 min-h-10 text-sm font-medium leading-relaxed text-ink/60">{book.description}</p><div className="mt-4 flex items-center justify-between border-t-2 border-ink/20 pt-3 text-xs font-bold"><span className="flex items-center gap-1.5"><Users size={14} /> {book.invited + 1} personas</span><span className="flex items-center gap-1.5 text-ink/55"><Clock3 size={13} /> {relativeDate(book.updatedAt)}</span><span className="flex items-center gap-1">Abrir <ChevronRight size={15} /></span></div></div></motion.article>)}</section>{library.error ? <div role="alert" className="mt-7 flex flex-col items-start justify-between gap-3 rounded-[1.5rem] border-2 border-ink bg-[#f2c5a0] p-5 sm:flex-row sm:items-center"><p className="flex items-center gap-2 text-sm font-black"><CloudOff size={18} /> No se pudieron cargar tus scrapbooks: {library.error}</p><button type="button" onClick={() => void library.reload()} className="flex min-h-11 items-center gap-2 rounded-xl border-2 border-ink bg-cream px-4 text-sm font-black"><RotateCcw size={15} /> Reintentar</button></div> : null}{library.loading ? <div className="mt-10 flex items-center justify-center gap-3 text-sm font-black uppercase tracking-[.16em] text-ink/60" aria-busy="true"><Loader2 className="animate-spin" size={20} /> Cargando tus scrapbooks…</div> : null}{!library.loading && filtered.length === 0 && <div className="mt-10 rounded-[1.75rem] border-2 border-dashed border-ink bg-white/45 p-10 text-center"><p className="font-display text-3xl font-black">Todavía no hay páginas aquí.</p><p className="mt-2 text-sm font-medium text-ink/60">Prueba otra búsqueda o empieza un scrapbook nuevo.</p></div>}<section className="mt-16 rounded-[2rem] border-2 border-ink bg-ink p-6 text-cream shadow-hard sm:p-8"><div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-center"><div><p className="text-[10px] font-black uppercase tracking-[.2em] text-orange">Tu siguiente recuerdo</p><h2 className="mt-2 font-display text-3xl font-black tracking-tight">Una foto puede abrir otra página.</h2></div><button type="button" onClick={() => setModal("create")} className="flex w-fit items-center gap-2 rounded-xl border-2 border-cream bg-orange px-4 py-3 text-sm font-black text-ink shadow-[3px_3px_0_#EAE7DA]"><Plus size={17} /> Crear scrapbook</button></div></section></div><AnimatePresence>{modal === "create" && <Dialog onClose={() => setModal(null)}><div className="pr-8"><p className="text-[10px] font-black uppercase tracking-[.18em] text-orange">Nueva historia</p><h2 className="mt-2 font-display text-4xl font-black tracking-[-.06em]">¿Cómo se llama este viaje?</h2></div><label className="mt-7 block text-xs font-black uppercase tracking-wider">Título<input autoFocus value={newTitle} onChange={(event) => setNewTitle(event.target.value)} onKeyDown={(event) => event.key === "Enter" && void addScrapbook()} placeholder="Ej. Verano sin mapa" className="mt-2 w-full rounded-xl border-2 border-ink bg-white/70 px-4 py-3 font-display text-xl font-black outline-none focus:ring-4 focus:ring-orange/40" /></label><label className="mt-4 block text-xs font-black uppercase tracking-wider">Descripción opcional<textarea value={newDescription} onChange={(event) => setNewDescription(event.target.value)} placeholder="Unas palabras para recordar el contexto..." className="mt-2 min-h-24 w-full resize-none rounded-xl border-2 border-ink bg-white/70 px-4 py-3 text-sm font-medium outline-none focus:ring-4 focus:ring-orange/40" /></label><button type="button" onClick={() => void addScrapbook()} disabled={creating} className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl border-2 border-ink bg-orange px-4 py-3 text-sm font-black shadow-hard-sm"><FilePlus2 size={17} /> Crear scrapbook</button></Dialog>}{(modal === "share" || modal === "invite") && <Dialog onClose={() => setModal(null)}><div className="flex h-14 w-14 items-center justify-center rounded-2xl border-2 border-ink bg-orange shadow-hard-sm">{modal === "share" ? <Share2 /> : <Users />}</div><h2 className="mt-6 font-display text-3xl font-black">{modal === "share" ? "Comparte la historia." : "Invita a tu gente."}</h2><p className="mt-3 text-sm font-medium leading-relaxed text-ink/65">{modal === "share" ? "Copia un enlace para que tus acompañantes puedan ver y aportar recuerdos al scrapbook." : "Añade personas por email y decidid juntos qué momentos se quedan en la página."}</p><div className="mt-6 flex gap-2"><input placeholder={modal === "share" ? "memento.mundi/algarve-2026" : "email@amigo.com"} className="min-w-0 flex-1 rounded-xl border-2 border-ink bg-white/70 px-3 py-3 text-sm outline-none" /><button type="button" onClick={() => setModal(null)} className="rounded-xl border-2 border-ink bg-orange px-4 py-3 text-sm font-black">{modal === "share" ? "Copiar" : "Añadir"}</button></div></Dialog>}{modal === "scan" && <QrScannerDialog onClose={() => setModal(null)} onDetected={() => { if (scrapbooks[0]) { setSelected(scrapbooks[0]); setModal("editor"); } else setModal(null); }} />}</AnimatePresence></main>;
 }

@@ -21,7 +21,7 @@ export const CUSTOM_SCRAPBOOKS_KEY = "memento-mundi:scrapbooks:custom";
 /** Composición a mostrar: la guardada o, si no existe, la inicial (portada + título + ubicación). */
 export function getScrapbookComposition(scrapbook: Scrapbook): ScrapbookComposition {
   if (scrapbook.composition) return scrapbook.composition;
-  if (scrapbook.id.startsWith("new-")) return createEmptyComposition(new Date(scrapbook.createdAt));
+  if (scrapbook.source === "cloud" || scrapbook.id.startsWith("new-")) return createEmptyComposition(new Date(scrapbook.createdAt));
   return createStarterComposition(scrapbook, new Date(scrapbook.updatedAt));
 }
 

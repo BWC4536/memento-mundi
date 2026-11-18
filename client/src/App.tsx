@@ -6,6 +6,7 @@ import { MotionConfig } from "framer-motion";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import BrandCorner from "./components/BrandCorner";
+import LoginDialog from "./components/LoginDialog";
 import NavigationDock from "./components/NavigationDock";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
@@ -35,6 +36,7 @@ export default function App() {
           <BrandCorner />
           <Router />
           <NavigationDock />
+          <LoginDialog />
         </TooltipProvider>
         </MotionConfig>
       </ThemeProvider>

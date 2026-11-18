@@ -7,6 +7,7 @@ import {
   Crop,
   ImagePlus,
   Layers3,
+  Loader2,
   Magnet,
   Maximize,
   Minus,
@@ -52,13 +53,14 @@ import { PANEL_LABELS, PanelContent, type EditorApi, type PanelId, type PhotoReq
 export { CANVAS_IMAGE_ACCEPT } from "@/lib/image-upload";
 export type { CanvasElement, ScrapbookComposition } from "@/lib/composition";
 
-export type SaveFeedback = { persisted: boolean; message?: string };
+/** Respuesta del padre al guardar. `composition` es la versión guardada (p. ej. con las fotos ya subidas a Storage). */
+export type SaveFeedback = { persisted: boolean; message?: string; composition?: ScrapbookComposition };
 
 export type InfiniteCanvasEditorProps = {
   scrapbook: Scrapbook;
   initialComposition: ScrapbookComposition;
   /** Devuelve la composición al padre. Puede informar si la copia local falló. */
-  onSave: (composition: ScrapbookComposition) => SaveFeedback | void;
+  onSave: (composition: ScrapbookComposition) => SaveFeedback | void | Promise<SaveFeedback | void>;
   onClose: () => void;
 };
 
@@ -141,6 +143,8 @@ export default function InfiniteCanvasEditor({ scrapbook, initialComposition, on
   const [snapEnabled, setSnapEnabled] = useState(true);
   const [textFocusToken, setTextFocusToken] = useState(0);
   const [confirmClose, setConfirmClose] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
   const [uploading, setUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState("Preparando fotos…");
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -278,15 +282,30 @@ export default function InfiniteCanvasEditor({ scrapbook, initialComposition, on
     dispatch({ type: "apply", update: (current) => created.reduce((acc, element) => addElement(acc, element), current), select: created[created.length - 1].id });
   }, [placementCenter]);
 
-  const save = useCallback(() => {
+  const save = useCallback(async () => {
+    if (savingRef.current) return false;
+    savingRef.current = true;
+    setSaving(true);
     const { composition: current, view: currentView } = latest.current;
     const prepared = prepareCompositionForSave({ ...current, canvas: { ...current.canvas, zoom: clampCanvasZoom(currentView.zoom) } });
-    const feedback = onSave(prepared);
+    // El editor muestra ya la versión normalizada mientras se guarda.
     dispatch({ type: "apply", update: () => prepared, record: false });
-    savedRef.current = prepared;
-    setSavedVersion((version) => version + 1);
-    setNotice(feedback && !feedback.persisted ? { tone: "warn", text: feedback.message ?? "Guardado solo en esta sesión" } : { tone: "ok", text: "Cambios guardados" });
-    return prepared;
+    try {
+      const feedback = await onSave(prepared);
+      const stored = feedback?.composition ?? prepared;
+      // Si no se ha tocado nada mientras guardábamos, adoptamos la versión guardada (fotos ya en Storage).
+      if (latest.current.composition === prepared) dispatch({ type: "apply", update: () => stored, record: false });
+      savedRef.current = latest.current.composition === prepared ? stored : prepared;
+      setSavedVersion((version) => version + 1);
+      setNotice(feedback && !feedback.persisted ? { tone: "warn", text: feedback.message ?? "Guardado solo en este dispositivo" } : { tone: "ok", text: "Cambios guardados" });
+      return feedback ? feedback.persisted : true;
+    } catch {
+      setNotice({ tone: "warn", text: "No se pudo guardar. Inténtalo de nuevo." });
+      return false;
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
+    }
   }, [onSave]);
 
   const requestClose = useCallback(() => {
@@ -302,7 +321,7 @@ export default function InfiniteCanvasEditor({ scrapbook, initialComposition, on
       const mod = event.metaKey || event.ctrlKey;
       if (mod && event.key.toLowerCase() === "s") {
         event.preventDefault();
-        save();
+        void save();
         return;
       }
       if (typing) {
@@ -381,7 +400,7 @@ export default function InfiniteCanvasEditor({ scrapbook, initialComposition, on
     openPanel(tool);
   };
 
-  const statusText = dirty ? "Cambios sin guardar" : savedVersion > 0 ? "Cambios guardados" : "Sin cambios";
+  const statusText = saving ? "Guardando…" : dirty ? "Cambios sin guardar" : savedVersion > 0 ? "Cambios guardados" : "Sin cambios";
   const zoomControls = (
     <div className="flex items-center gap-1 rounded-xl border-2 border-cream/25 bg-ink/90 p-0.5" data-stage-ui>
       <button type="button" aria-label="Alejar lienzo" onClick={() => onViewChange((current) => ({ ...current, zoom: current.zoom / 1.2 }))} className="flex h-9 w-9 items-center justify-center rounded-lg text-cream hover:bg-orange hover:text-ink">
@@ -459,12 +478,14 @@ export default function InfiniteCanvasEditor({ scrapbook, initialComposition, on
           </span>
           <button
             type="button"
-            onClick={save}
+            onClick={() => void save()}
+            disabled={saving}
+            aria-busy={saving}
             className="relative flex h-11 items-center gap-2 rounded-xl border-2 border-cream bg-orange px-3 text-sm font-black text-ink shadow-[3px_3px_0_#EAE7DA] transition-transform active:translate-y-0.5 active:shadow-none sm:px-4"
           >
             {dirty ? <span className="absolute -right-1.5 -top-1.5 h-3.5 w-3.5 rounded-full border-2 border-ink bg-cream" aria-hidden="true" /> : null}
-            <Save size={17} /> <span className="sm:hidden">Guardar</span>
-            <span className="hidden sm:inline">Guardar cambios</span>
+            {saving ? <Loader2 size={17} className="animate-spin" /> : <Save size={17} />} <span className="sm:hidden">{saving ? "Guardando" : "Guardar"}</span>
+            <span className="hidden sm:inline">{saving ? "Guardando…" : "Guardar cambios"}</span>
           </button>
           <button
             type="button"
@@ -618,10 +639,11 @@ export default function InfiniteCanvasEditor({ scrapbook, initialComposition, on
               <div className="mt-5 grid gap-2">
                 <button
                   type="button"
-                  onClick={() => {
-                    save();
+                  disabled={saving}
+                  onClick={async () => {
+                    const ok = await save();
                     setConfirmClose(false);
-                    onClose();
+                    if (ok) onClose();
                   }}
                   className="flex min-h-12 items-center justify-center gap-2 rounded-xl border-2 border-ink bg-orange text-sm font-black shadow-hard-sm"
                 >

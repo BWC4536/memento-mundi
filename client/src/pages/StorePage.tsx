@@ -1,8 +1,7 @@
 import { useMemo, useState } from "react";
 import { ArrowRight, Instagram, Package, ShoppingBag, UserRound, X } from "lucide-react";
 import { useLocation } from "wouter";
-import { startLogin } from "@/const";
-import { useAuth } from "@/_core/hooks/useAuth";
+import { useAppAuth } from "@/hooks/useAppAuth";
 import StickerScrollHero from "@/components/StickerScrollHero";
 import CharacterGuide from "@/components/CharacterGuide";
 
@@ -92,13 +91,13 @@ function PackCard({ pack, onAdd }: { pack: Pack; onAdd: (pack: Pack) => void }) 
 }
 
 export default function StorePage() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, openLogin } = useAppAuth();
   const [, setLocation] = useLocation();
   const [cart, setCart] = useState<Pack[]>([]);
   const [showCart, setShowCart] = useState(false);
   const total = useMemo(() => cart.reduce((sum, item) => sum + Number(item.price.replace(" €", "")), 0), [cart]);
 
-  const handleLogin = () => isAuthenticated ? setLocation("/") : startLogin();
+  const handleLogin = () => isAuthenticated ? setLocation("/") : openLogin();
   const addPack = (pack: Pack) => { setCart((current) => [...current, pack]); setShowCart(true); };
 
   return (
