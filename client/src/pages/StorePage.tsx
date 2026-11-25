@@ -22,12 +22,12 @@ const products: Record<ProductKind, { label: string; icon: string }> = {
 };
 
 const packs: Pack[] = [
-  { id: "sticker", name: "Pack Pegatinas", kicker: "El punto de partida", description: "Una pegatina NFC + QR para desbloquear tu scrapbook al instante.", price: "12 €", badge: "Más fácil", color: "bg-[#d8e2dc]", photo: PAISAJES.pragaPuente, items: ["sticker"] },
+  { id: "sticker", name: "Pack Pegatinas", kicker: "El punto de partida", description: "Una pegatina NFC + QR para desbloquear tu scrapbook al instante.", price: "12 €", badge: "Más fácil", color: "bg-[#d8e2dc]", photo: PAISAJES.bratislavaPuerta, items: ["sticker"] },
   { id: "duo", name: "Pack Viaje", kicker: "Para llevar contigo", description: "Pegatina + llavero para que tu destino vaya siempre en tu mochila.", price: "24 €", color: "bg-[#e7d8c2]", photo: PAISAJES.panama, items: ["sticker", "keyring"] },
   { id: "home", name: "Pack Vuelta a casa", kicker: "Tu recuerdo diario", description: "Pegatina + imán para convertir la nevera en tu pequeño atlas.", price: "26 €", color: "bg-[#f2c5a0]", photo: PAISAJES.alsacia, items: ["sticker", "magnet"] },
   { id: "festive", name: "Pack Celebración", kicker: "Para regalar", description: "Pegatina + bola de Navidad: un viaje que vuelve cada diciembre.", price: "30 €", color: "bg-[#d9d1bd]", photo: PAISAJES.navidad, items: ["sticker", "ornament"] },
   { id: "wall", name: "Pack Pieza de ciudad", kicker: "El recuerdo que se queda", description: "Pegatina + imán + cuadro de pared con una pieza de la ciudad que fue.", price: "58 €", badge: "Nuevo", color: "bg-[#cbd8d1]", photo: PAISAJES.budapest, items: ["sticker", "magnet", "wall"], featured: true },
-  { id: "mundi", name: "Pack Memento Mundi", kicker: "Todo el ritual", description: "La colección completa: pegatina, llavero, imán, bola y cuadro de ciudad.", price: "84 €", badge: "Completo", color: "bg-[#fa9223]", photo: PAISAJES.viena, items: ["sticker", "keyring", "magnet", "ornament", "wall"], featured: true },
+  { id: "mundi", name: "Pack Memento Mundi", kicker: "Todo el ritual", description: "La colección completa: pegatina, llavero, imán, bola y cuadro de ciudad.", price: "84 €", badge: "Completo", color: "bg-[#fa9223]", photo: PAISAJES.rialto, items: ["sticker", "keyring", "magnet", "ornament", "wall"], featured: true },
 ];
 
 function StoreHeader({ onLogin, loggedIn }: { onLogin: () => void; loggedIn: boolean }) {
@@ -207,7 +207,7 @@ export default function StorePage() {
 
         {/* Postales: muro decorativo de fotos */}
         <section className="mt-20" aria-label="Postales del mundo">
-          <PhotoMosaic />
+          <PhotoMosaic set="a" />
         </section>
 
         <footer className="mt-16 flex flex-col justify-between gap-4 border-t-2 border-ink/15 pt-6 text-xs font-bold text-ink/60 sm:flex-row pb-6">

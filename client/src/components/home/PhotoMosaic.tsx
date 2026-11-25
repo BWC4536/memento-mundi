@@ -9,19 +9,28 @@ import { PAISAJES, type Paisaje } from "@/lib/paisajes";
  * - tablet (4 col): parejas de 2 col y una banda final a lo ancho
  * - escritorio (6 col × 6 filas): composición asimétrica con dos verticales altas
  */
-const TILES: { photo: Paisaje; span: string; sizes: string }[] = [
-  { photo: PAISAJES.panama, span: "row-span-2 sm:col-span-2 sm:row-span-4 lg:row-span-4", sizes: "(min-width: 640px) 33vw, 50vw" },
-  { photo: PAISAJES.alsacia, span: "row-span-2 sm:col-span-2 sm:row-span-3 lg:row-span-3", sizes: "(min-width: 640px) 33vw, 50vw" },
-  { photo: PAISAJES.budapest, span: "col-span-2 row-span-2 sm:col-span-2 sm:row-span-2 lg:row-span-2", sizes: "(min-width: 640px) 33vw, 100vw" },
-  { photo: PAISAJES.londres, span: "row-span-2 sm:col-span-2 sm:row-span-4 lg:row-span-4", sizes: "(min-width: 640px) 33vw, 50vw" },
-  { photo: PAISAJES.navidad, span: "row-span-2 sm:col-span-2 sm:row-span-3 lg:row-span-3", sizes: "(min-width: 640px) 33vw, 50vw" },
-  { photo: PAISAJES.viena, span: "col-span-2 row-span-2 sm:col-span-4 sm:row-span-2 lg:col-span-2 lg:row-span-2", sizes: "(min-width: 1024px) 33vw, 100vw" },
+type Tile = { photo: Paisaje; span: string; sizes: string };
+const SPANS: string[] = [
+  "row-span-2 sm:col-span-2 sm:row-span-4 lg:row-span-4",
+  "row-span-2 sm:col-span-2 sm:row-span-3 lg:row-span-3",
+  "col-span-2 row-span-2 sm:col-span-2 sm:row-span-2 lg:row-span-2",
+  "row-span-2 sm:col-span-2 sm:row-span-4 lg:row-span-4",
+  "row-span-2 sm:col-span-2 sm:row-span-3 lg:row-span-3",
+  "col-span-2 row-span-2 sm:col-span-4 sm:row-span-2 lg:col-span-2 lg:row-span-2",
 ];
+const SIZES = ["(min-width: 640px) 33vw, 50vw", "(min-width: 640px) 33vw, 50vw", "(min-width: 640px) 33vw, 100vw", "(min-width: 640px) 33vw, 50vw", "(min-width: 640px) 33vw, 50vw", "(min-width: 1024px) 33vw, 100vw"];
+/** Posiciones 0, 3 = verticales altas · 1, 4 = verticales medias · 2, 5 = apaisadas. */
+const SETS = {
+  a: [PAISAJES.panama, PAISAJES.alsacia, PAISAJES.budapest, PAISAJES.londres, PAISAJES.navidad, PAISAJES.viena],
+  b: [PAISAJES.bled, PAISAJES.rialto, PAISAJES.postales, PAISAJES.bratislavaIglesia, PAISAJES.paraguas, PAISAJES.alpes],
+  c: [PAISAJES.alpes, PAISAJES.bratislavaPuerta, PAISAJES.postales, PAISAJES.pragaPuente, PAISAJES.alsacia, PAISAJES.bled],
+} as const;
+const tilesFor = (set: keyof typeof SETS): Tile[] => SETS[set].map((photo, i) => ({ photo, span: SPANS[i], sizes: SIZES[i] }));
 
-export default function PhotoMosaic({ className = "" }: { className?: string }) {
+export default function PhotoMosaic({ set = "a", className = "" }: { set?: keyof typeof SETS; className?: string }) {
   return (
     <div className={`grid grid-flow-dense grid-cols-2 auto-rows-[92px] gap-3 min-[420px]:auto-rows-[110px] sm:grid-cols-4 sm:auto-rows-[88px] sm:gap-4 lg:grid-cols-6 lg:auto-rows-[96px] lg:gap-5 xl:auto-rows-[108px] ${className}`}>
-      {TILES.map(({ photo, span, sizes }, index) => (
+      {tilesFor(set).map(({ photo, span, sizes }, index) => (
         <motion.figure
           key={photo.slug}
           initial={{ opacity: 0, y: 24 }}

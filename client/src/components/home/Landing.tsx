@@ -15,9 +15,9 @@ type Props = {
 };
 
 const STEPS: { n: string; title: string; desc: string; photo: Paisaje; mascot: MascotName }[] = [
-  { n: "01", title: "Escanea", desc: "Acerca el móvil a la pegatina NFC o lee su QR.", photo: PAISAJES.pragaPuente, mascot: "13-escanear-qr" },
-  { n: "02", title: "Crea", desc: "Fotos, marcos y notas en un cuaderno sin límites.", photo: PAISAJES.collage, mascot: "12-scrapbook-album" },
-  { n: "03", title: "Comparte", desc: "Invita a quien viajó contigo y llenad la página juntos.", photo: PAISAJES.pragaTyn, mascot: "14-compartir" },
+  { n: "01", title: "Escanea", desc: "Acerca el móvil a la pegatina NFC o lee su QR.", photo: PAISAJES.bratislavaPuerta, mascot: "13-escanear-qr" },
+  { n: "02", title: "Crea", desc: "Fotos, marcos y notas en un cuaderno sin límites.", photo: PAISAJES.postales, mascot: "12-scrapbook-album" },
+  { n: "03", title: "Comparte", desc: "Invita a quien viajó contigo y llenad la página juntos.", photo: PAISAJES.paraguas, mascot: "14-compartir" },
 ];
 
 const fadeUp = (delay = 0) => ({
@@ -103,7 +103,7 @@ export default function Landing({ header, onStore, onLogin }: Props) {
           <p className="text-[10px] font-black uppercase tracking-[.2em] text-orange">Postales del mundo</p>
           <h2 className="mt-3 font-display ![font-size:clamp(2.25rem,6vw,3.75rem)] leading-[.92] tracking-[-.03em]">Lugares que se quedan.</h2>
         </motion.div>
-        <PhotoMosaic />
+        <PhotoMosaic set="b" />
       </section>
 
       {/* Cierre: llamada a la tienda con foto */}
@@ -120,8 +120,8 @@ export default function Landing({ header, onStore, onLogin }: Props) {
             </button>
           </div>
           <div className="relative order-1 aspect-[16/11] border-b-2 border-ink md:order-2 md:aspect-auto md:min-h-[420px] md:border-b-0 md:border-l-2">
-            <PaisajePhoto photo={PAISAJES.viena} sizes="(min-width: 768px) 45vw, 100vw" />
-            <PhotoTag photo={PAISAJES.viena} className="absolute bottom-4 left-4" />
+            <PaisajePhoto photo={PAISAJES.bled} sizes="(min-width: 768px) 45vw, 100vw" />
+            <PhotoTag photo={PAISAJES.bled} className="absolute bottom-4 left-4" />
           </div>
         </motion.div>
       </section>

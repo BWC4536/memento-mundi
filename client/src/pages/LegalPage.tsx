@@ -102,7 +102,7 @@ export default function LegalPage({ slug }: { slug: LegalSlug }) {
           ))}
         </nav>
 
-        <PageHero compact className="mt-6" photo={PAISAJES.viena} eyebrow={`Actualizada el ${LEGAL_UPDATED}`} title={doc.title} />
+        <PageHero compact className="mt-6" photo={PAISAJES.bratislavaIglesia} eyebrow={`Actualizada el ${LEGAL_UPDATED}`} title={doc.title} />
 
         <article className="mt-6 rounded-[2rem] border-2 border-ink bg-white/60 p-5 shadow-hard sm:p-10">
           <p className="text-lg font-semibold text-ink/65">{doc.summary}</p>

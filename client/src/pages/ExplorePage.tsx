@@ -50,7 +50,7 @@ export default function ExplorePage() {
           </button>
         </header>
 
-        <PageHero className="mt-6 sm:mt-8" photo={PAISAJES.panama} eyebrow="Atlas compartido" title={<>El mundo tiene<br /><span className="text-orange">puntos</span> de vuelta.</>} priority>
+        <PageHero className="mt-6 sm:mt-8" photo={PAISAJES.bled} eyebrow="Atlas compartido" title={<>El mundo tiene<br /><span className="text-orange">puntos</span> de vuelta.</>} priority>
           Cada chincheta es un sitio al que prometimos volver.
         </PageHero>
 
@@ -89,7 +89,7 @@ export default function ExplorePage() {
           <div className="rounded-[1.75rem] border-2 border-ink bg-white/55 p-5 shadow-hard-sm sm:p-6"><div className="flex items-center justify-between"><div><p className="text-[10px] font-black uppercase tracking-[0.18em] text-orange">Tus coordenadas</p><h2 className="mt-2 font-display text-3xl font-black tracking-tight">Tres paradas.</h2></div><Camera size={24} /></div><div className="mt-5 space-y-2">{places.map((place) => <button key={place.id} type="button" onClick={() => selectPlace(place)} className="flex w-full items-center justify-between rounded-2xl border-2 border-ink bg-cream p-3 text-left transition-transform hover:-translate-y-0.5 active:scale-[.99]"><span className="flex items-center gap-3"><span className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-ink" style={{ backgroundColor: place.color }}><MapPin size={16} /></span><span><span className="block text-sm font-black">{place.city}</span><span className="block text-[10px] font-bold uppercase tracking-wider text-ink/55">{place.memories} recuerdos · {place.country}</span></span></span><ArrowUpRight size={17} /></button>)}</div></div>
         </section>
 
-        <PhotoMosaic className="mt-16" />
+        <PhotoMosaic set="c" className="mt-16" />
       </div>
 
       <AnimatePresence>{selected && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-end justify-center bg-ink/35 p-4 backdrop-blur-sm sm:items-center"><motion.aside initial={{ y: 28, scale: .97 }} animate={{ y: 0, scale: 1 }} exit={{ y: 18, scale: .97 }} className="relative w-full max-w-md rounded-[2rem] border-2 border-ink bg-cream p-5 shadow-hard sm:p-7"><button type="button" onClick={() => setSelected(null)} aria-label="Cerrar recuerdo" className="absolute right-4 top-4 rounded-full border-2 border-ink bg-white/60 p-2"><X size={17} /></button><Mascot name="11-ubicacion-pin" size="sm" /><p className="mt-8 text-[10px] font-black uppercase tracking-[0.2em] text-orange">Punto de vuelta · {selected.country}</p><h2 className="mt-2 font-display text-4xl font-black tracking-[-0.05em]">{selected.city}</h2><p className="mt-1 font-display text-2xl font-black text-ink/45">{selected.title}</p><p className="mt-5 text-sm font-medium leading-relaxed text-ink/70">{selected.note}</p><div className="mt-7 flex items-center justify-between border-t-2 border-ink/15 pt-4 text-xs font-black"><span>{selected.memories} recuerdos guardados</span><span className="rounded-full border-2 border-ink bg-orange px-3 py-1.5">Abrir scrapbook <ArrowUpRight size={13} className="ml-1 inline" /></span></div></motion.aside></motion.div>}</AnimatePresence>

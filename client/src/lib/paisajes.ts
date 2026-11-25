@@ -97,16 +97,79 @@ export const PAISAJES = {
     widths: [640, 1080],
     focus: "55% 55%",
   },
+  bratislavaPuerta: {
+    slug: "bratislava-puerta",
+    city: "Bratislava",
+    place: "Puerta de San Miguel",
+    alt: "Torre de la Puerta de San Miguel con su cúpula verde en el casco antiguo de Bratislava",
+    ratio: 9 / 16,
+    widths: [640, 1080],
+    focus: "45% 40%",
+  },
+  bratislavaIglesia: {
+    slug: "bratislava-iglesia-azul",
+    city: "Bratislava",
+    place: "Iglesia Azul",
+    alt: "Iglesia Azul de Santa Isabel en Bratislava, toda en tonos celestes",
+    ratio: 9 / 16,
+    widths: [640, 1080],
+    focus: "55% 45%",
+  },
+  rialto: {
+    slug: "venecia-rialto",
+    city: "Venecia",
+    place: "Puente de Rialto",
+    alt: "Puente de Rialto en Venecia visto desde el canal bajo un cielo azul intenso",
+    ratio: 9 / 16,
+    widths: [640, 1080],
+    focus: "50% 55%",
+  },
+  alpes: {
+    slug: "alpes-rio",
+    city: "Alpes",
+    place: "Río y montañas",
+    alt: "Río verde que refleja las nubes con montañas al fondo",
+    ratio: 9 / 16,
+    widths: [640, 1080],
+    focus: "50% 55%",
+  },
+  paraguas: {
+    slug: "calle-paraguas",
+    city: "Verano",
+    place: "Calle de paraguas",
+    alt: "Calle con casas de colores y paraguas suspendidos sobre ella",
+    ratio: 9 / 16,
+    widths: [640, 1080],
+    focus: "50% 50%",
+  },
+  bled: {
+    slug: "bled-lago",
+    city: "Bled",
+    place: "Lago",
+    alt: "Lago de Bled con su isla y las montañas al fondo, entre las ramas de un árbol",
+    ratio: 9 / 16,
+    widths: [640, 1080],
+    focus: "50% 60%",
+  },
+  postales: {
+    slug: "venecia-postales",
+    city: "Venecia",
+    place: "Puesto de postales",
+    alt: "Puesto de postales en un callejón de Venecia",
+    ratio: 4 / 3,
+    widths: [800, 1280],
+    focus: "50% 70%",
+  },
 } as const satisfies Record<string, Paisaje>;
 
 /** Carrusel del hero de la landing: pocas tarjetas para que el anillo quepa en media columna. */
-export const CAROUSEL_PAISAJES: readonly Paisaje[] = [PAISAJES.pragaPuente, PAISAJES.panama, PAISAJES.viena, PAISAJES.alsacia, PAISAJES.budapest, PAISAJES.londres];
+export const CAROUSEL_PAISAJES: readonly Paisaje[] = [PAISAJES.pragaPuente, PAISAJES.bled, PAISAJES.viena, PAISAJES.rialto, PAISAJES.budapest, PAISAJES.panama];
 
 /** Carrusel a todo el ancho: todas las fotos, alternando cálidas y nocturnas. */
-export const ALL_PAISAJES: readonly Paisaje[] = [PAISAJES.panama, PAISAJES.pragaPuente, PAISAJES.alsacia, PAISAJES.londres, PAISAJES.viena, PAISAJES.navidad, PAISAJES.pragaTyn, PAISAJES.budapest, PAISAJES.collage];
+export const ALL_PAISAJES: readonly Paisaje[] = [PAISAJES.panama, PAISAJES.bled, PAISAJES.pragaPuente, PAISAJES.rialto, PAISAJES.alsacia, PAISAJES.bratislavaIglesia, PAISAJES.londres, PAISAJES.viena, PAISAJES.navidad, PAISAJES.paraguas, PAISAJES.pragaTyn, PAISAJES.alpes, PAISAJES.budapest, PAISAJES.bratislavaPuerta, PAISAJES.postales, PAISAJES.collage];
 
 export const paisajeSrc = (p: Paisaje, width = p.widths[0]) => `/paisajes/web/${p.slug}-${width}.webp`;
 export const paisajeSrcSet = (p: Paisaje) => p.widths.map((w) => `${paisajeSrc(p, w)} ${w}w`).join(", ");
 
-/** Galería en arco: las fotos nuevas (4 tarjetas que se repiten en bucle). */
-export const ARC_PAISAJES: readonly Paisaje[] = [PAISAJES.panama, PAISAJES.alsacia, PAISAJES.londres, PAISAJES.navidad];
+/** Galería en arco: las fotos más recientes, en bucle. */
+export const ARC_PAISAJES: readonly Paisaje[] = [PAISAJES.panama, PAISAJES.bled, PAISAJES.alsacia, PAISAJES.bratislavaIglesia, PAISAJES.londres, PAISAJES.rialto, PAISAJES.navidad, PAISAJES.paraguas, PAISAJES.alpes, PAISAJES.bratislavaPuerta];
