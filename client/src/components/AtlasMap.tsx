@@ -112,17 +112,6 @@ const AtlasMap = forwardRef<AtlasMapHandle, Props>(function AtlasMap(
     map.on("click focus", () => map.scrollWheelZoom.enable());
     map.on("mouseout blur", () => map.scrollWheelZoom.disable());
 
-    markersRef.current.clear();
-    for (const place of callbacks.current.places) {
-      const marker = L.marker([place.lat, place.lng], {
-        icon: L.divIcon({ className: "atlas-pin", html: pinHtml(place, false), iconSize: [0, 0] }),
-        keyboard: true,
-        title: place.city,
-      });
-      marker.on("click", () => callbacks.current.onSelect(place.id));
-      marker.addTo(layer);
-      markersRef.current.set(place.id, marker);
-    }
     syncMarkers();
 
     // Si el contenedor cambia de tamaño (giro del móvil, cambio de layout) el mapa se reajusta.
@@ -139,6 +128,25 @@ const AtlasMap = forwardRef<AtlasMapHandle, Props>(function AtlasMap(
     // El mapa se crea una sola vez; los cambios llegan por la ref de callbacks.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Las chinchetas se rehacen cuando cambian los sitios (p. ej. al terminar de cargar los scrapbooks).
+  useEffect(() => {
+    const layer = layerRef.current;
+    if (!layer) return;
+    layer.clearLayers();
+    markersRef.current.clear();
+    for (const place of places) {
+      const marker = L.marker([place.lat, place.lng], {
+        icon: L.divIcon({ className: "atlas-pin", html: pinHtml(place, place.id === selectedId), iconSize: [0, 0] }),
+        keyboard: true,
+        title: place.city,
+      });
+      marker.on("click", () => callbacks.current.onSelect(place.id));
+      marker.addTo(layer);
+      markersRef.current.set(place.id, marker);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [places]);
 
   useEffect(() => {
     for (const place of places) {

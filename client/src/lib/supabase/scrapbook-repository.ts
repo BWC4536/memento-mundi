@@ -118,8 +118,8 @@ export function createScrapbookRepository({ client, getAccessToken, getUserId, t
     };
   }
 
-  async function listScrapbooks(): Promise<Scrapbook[]> {
-    const rows = await client.request<ScrapbookRow[]>(`/rest/v1/scrapbooks?select=${SCRAPBOOK_SELECT}&order=updated_at.desc`, { accessToken: await token() });
+  /** Convierte filas en scrapbooks firmando sus portadas de Storage. */
+  async function withCovers(rows: ScrapbookRow[]): Promise<Scrapbook[]> {
     const coverPaths = rows.map((row) => storagePathFromRef(row.cover_image_url ?? row.cover_url)).filter((path): path is string => !!path);
     const signed = await signPaths(coverPaths).catch(() => new Map<string, string>());
     return rows.map((row, index) => {
@@ -128,6 +128,45 @@ export function createScrapbookRepository({ client, getAccessToken, getUserId, t
       const cover = path ? signed.get(path) ?? EMPTY_COVER : raw || EMPTY_COVER;
       return rowToScrapbook(row, index, cover);
     });
+  }
+
+  /**
+   * Scrapbooks de Home: los míos y aquellos en los que soy miembro.
+   * RLS también deja leer los públicos de otros; esos van al mapa de Explorar, no a mi biblioteca.
+   */
+  async function listScrapbooks(): Promise<Scrapbook[]> {
+    const accessToken = await token();
+    const userId = getUserId();
+    const [rows, memberships] = await Promise.all([
+      client.request<ScrapbookRow[]>(`/rest/v1/scrapbooks?select=${SCRAPBOOK_SELECT}&order=updated_at.desc`, { accessToken }),
+      userId
+        ? client.request<Array<{ scrapbook_id: string }>>(`/rest/v1/scrapbook_members?select=scrapbook_id&user_id=eq.${encodeURIComponent(userId)}`, { accessToken }).catch(() => [])
+        : Promise.resolve([]),
+    ]);
+    const memberOf = new Set((memberships ?? []).map((item) => item.scrapbook_id));
+    return withCovers(rows.filter((row) => !userId || row.owner_id === userId || memberOf.has(row.id)));
+  }
+
+  /** Scrapbooks públicos con ubicación (de cualquier usuario): las chinchetas del mapa de Explorar. */
+  async function listPublicScrapbooks(): Promise<Scrapbook[]> {
+    const rows = await client.request<ScrapbookRow[]>(
+      `/rest/v1/scrapbooks?select=${SCRAPBOOK_SELECT}&is_public=eq.true&latitude=not.is.null&longitude=not.is.null&order=updated_at.desc&limit=200`,
+      { accessToken: await token() },
+    );
+    return withCovers(rows);
+  }
+
+  /** Público ↔ privado. Solo el propietario puede cambiarlo (RLS). */
+  async function setScrapbookVisibility(id: string, isPublic: boolean) {
+    const rows = await client.request<Array<{ id: string; is_public: boolean }>>(`/rest/v1/scrapbooks?id=eq.${encodeURIComponent(id)}&select=id,is_public`, {
+      method: "PATCH",
+      accessToken: await token(),
+      headers: { Prefer: "return=representation" },
+      body: { is_public: isPublic },
+    });
+    // Si RLS lo bloquea (no eres el propietario), PostgREST no devuelve filas en lugar de dar error.
+    if (!rows?.length) throw new SupabaseError("Solo el propietario puede cambiar la visibilidad.", 403, "not_owner");
+    return rows[0].is_public;
   }
 
   async function createScrapbook(input: { title: string; description?: string; location?: string }): Promise<Scrapbook> {
@@ -248,7 +287,7 @@ export function createScrapbookRepository({ client, getAccessToken, getUserId, t
     return resolveMedia({ ...uploaded, pageId });
   }
 
-  return { listScrapbooks, createScrapbook, deleteScrapbook, loadComposition, saveComposition, signPaths };
+  return { listScrapbooks, listPublicScrapbooks, setScrapbookVisibility, createScrapbook, deleteScrapbook, loadComposition, saveComposition, signPaths };
 }
 
 export type ScrapbookRepository = ReturnType<typeof createScrapbookRepository>;

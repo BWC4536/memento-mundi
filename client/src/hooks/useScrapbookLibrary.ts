@@ -124,6 +124,19 @@ export function useScrapbookLibrary(user: AppUser | null, provider: "supabase" |
     [repository],
   );
 
+  /** Público ↔ privado desde el menú de la tarjeta. Sin Supabase solo cambia en este navegador. */
+  const setScrapbookVisibility = useCallback(
+    async (id: string, isPublic: boolean) => {
+      const next = repository ? await repository.setScrapbookVisibility(id, isPublic) : isPublic;
+      setScrapbooks((items) => items.map((item) => (item.id === id ? { ...item, isPublic: next } : item)));
+      return next;
+    },
+    [repository],
+  );
+
+  /** Scrapbooks públicos de cualquier usuario con ubicación (mapa de Explorar). Sin Supabase no hay ninguno ajeno. */
+  const listPublicScrapbooks = useCallback(async (): Promise<Scrapbook[]> => (repository ? repository.listPublicScrapbooks() : []), [repository]);
+
   /** Guardar del editor: actualiza el scrapbook en el estado compartido, en Supabase y en la copia local. */
   const saveComposition = useCallback(
     async (id: string, composition: ScrapbookComposition): Promise<SaveResult> => {
@@ -146,5 +159,5 @@ export function useScrapbookLibrary(user: AppUser | null, provider: "supabase" |
     [repository],
   );
 
-  return { mode, scrapbooks, loading, error, reload, ensureComposition, compositionStatus, createScrapbook, deleteScrapbook, saveComposition };
+  return { mode, scrapbooks, loading, error, reload, ensureComposition, compositionStatus, createScrapbook, deleteScrapbook, setScrapbookVisibility, listPublicScrapbooks, saveComposition };
 }

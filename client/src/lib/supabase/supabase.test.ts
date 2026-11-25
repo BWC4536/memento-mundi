@@ -102,6 +102,27 @@ describe("repositorio de scrapbooks en Supabase", () => {
     expect(books[1]).toMatchObject({ location: "Sin ubicación", cover: EMPTY_COVER, photos: 0 });
   });
 
+  it("Home solo lista los míos y los compartidos conmigo, no los públicos de otros", async () => {
+    const row = (id: string, owner: string, isPublic: boolean) => ({ id, owner_id: owner, title: id, description: null, cover_image_url: null, cover_url: null, location_name: null, city: null, country: null, latitude: null, longitude: null, is_public: isPublic, created_at: "2026-11-01T00:00:00Z", updated_at: "2026-11-01T00:00:00Z" });
+    const { fetchImpl } = fakeFetch((call) => {
+      if (call.url.startsWith("/rest/v1/scrapbooks")) return { body: [row("mio", USER.id, false), row("compartido", "otro", false), row("publico-ajeno", "otro", true)] };
+      if (call.url.startsWith("/rest/v1/scrapbook_members")) return { body: [{ scrapbook_id: "compartido" }] };
+      return undefined;
+    });
+    const books = await createScrapbookRepository(repoDeps(fetchImpl)).listScrapbooks();
+    expect(books.map((book) => book.id)).toEqual(["mio", "compartido"]);
+  });
+
+  it("cambia la visibilidad y avisa si RLS no deja (no eres el propietario)", async () => {
+    let allowed = true;
+    const { calls, fetchImpl } = fakeFetch((call) => (call.method === "PATCH" ? { body: allowed ? [{ id: "sb-1", is_public: true }] : [] } : undefined));
+    const repository = createScrapbookRepository(repoDeps(fetchImpl));
+    expect(await repository.setScrapbookVisibility("sb-1", true)).toBe(true);
+    expect(calls[0]).toMatchObject({ method: "PATCH", url: "/rest/v1/scrapbooks?id=eq.sb-1&select=id,is_public", body: { is_public: true } });
+    allowed = false;
+    await expect(repository.setScrapbookVisibility("sb-1", false)).rejects.toThrow("Solo el propietario");
+  });
+
   it("guarda: sube las fotos a Storage, guarda solo referencias y borra los elementos eliminados", async () => {
     let composition = createEmptyComposition(new Date("2026-11-18T10:00:00Z"));
     const photo = createPhotoElement(composition, { src: "data:image/webp;base64,AAAA", naturalWidth: 1200, naturalHeight: 800, asset: { width: 1200, height: 800, inline: true } });
