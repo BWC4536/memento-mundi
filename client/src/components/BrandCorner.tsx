@@ -9,6 +9,7 @@ export default function BrandCorner() {
   return (
     <Link
       href="/"
+      data-brand-corner
       aria-label="Memento Mundi, ir a inicio"
       className="absolute left-3 top-3 z-[80] flex max-w-[calc(100vw-6rem)] items-center gap-2 sm:left-6 sm:top-5 sm:gap-3"
     >

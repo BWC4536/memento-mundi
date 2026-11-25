@@ -100,3 +100,6 @@ html.reduce-motion, html.reduce-motion *, html.reduce-motion *::before, html.red
 @media (prefers-reduced-motion: reduce) {
   .sticker-scroll-layer { transition: none !important; }
 }
+
+/* La barra PillNav ya lleva el logo: el lockup flotante de la esquina sobra. */
+html[data-pillnav] [data-brand-corner] { display: none; }

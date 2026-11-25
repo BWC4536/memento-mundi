@@ -107,3 +107,6 @@ export const ALL_PAISAJES: readonly Paisaje[] = [PAISAJES.panama, PAISAJES.praga
 
 export const paisajeSrc = (p: Paisaje, width = p.widths[0]) => `/paisajes/web/${p.slug}-${width}.webp`;
 export const paisajeSrcSet = (p: Paisaje) => p.widths.map((w) => `${paisajeSrc(p, w)} ${w}w`).join(", ");
+
+/** Galería en arco: las fotos nuevas (4 tarjetas que se repiten en bucle). */
+export const ARC_PAISAJES: readonly Paisaje[] = [PAISAJES.panama, PAISAJES.alsacia, PAISAJES.londres, PAISAJES.navidad];

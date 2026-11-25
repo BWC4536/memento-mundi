@@ -1,15 +1,14 @@
-import type { ReactNode } from "react";
 import { motion } from "framer-motion";
 import { ArrowUpRight, ChevronRight, ShoppingBag } from "lucide-react";
 import CharacterGuide from "@/components/CharacterGuide";
 import Mascot, { type MascotName } from "@/components/ui/Mascot";
 import PaisajePhoto, { PhotoTag } from "@/components/home/PaisajePhoto";
-import PhotoCarousel3D from "@/components/home/PhotoCarousel3D";
+import PillNav from "@/components/home/PillNav";
+import { RecuerdaMementoBlock, ViveMundiBlock } from "@/components/home/HomeShowcase";
 import PhotoMosaic from "@/components/home/PhotoMosaic";
-import { CAROUSEL_PAISAJES, PAISAJES, type Paisaje } from "@/lib/paisajes";
+import { PAISAJES, type Paisaje } from "@/lib/paisajes";
 
 type Props = {
-  header: ReactNode;
   onStore: () => void;
   onLogin: () => void;
 };
@@ -28,43 +27,35 @@ const fadeUp = (delay = 0) => ({
 });
 
 /** Página de inicio para quien aún no ha iniciado sesión. */
-export default function Landing({ header, onStore, onLogin }: Props) {
+export default function Landing({ onStore, onLogin }: Props) {
+  const goTo = (id: string) => () => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
   return (
     <main className="min-h-screen overflow-x-hidden bg-[#EAE7DA] pb-32">
-      <div className="mx-auto max-w-7xl px-4 pt-5 sm:px-8 lg:px-12">
-        {header}
+      <PillNav
+        links={[
+          { label: "Cómo funciona", onClick: goTo("como-funciona") },
+          { label: "Tienda", href: "/store" },
+          { label: "Explorar", href: "/explore" },
+        ]}
+        cta={{ label: "Ir a la tienda", onClick: onStore }}
+        accountLabel="Iniciar sesión"
+        onAccount={onLogin}
+      />
 
-        {/* Hero: titular + carrusel 3D de fotos reales */}
-        <section className="mt-12 grid items-center gap-10 sm:mt-14 lg:mt-10 lg:grid-cols-[1fr_1.05fr] lg:gap-6">
-          <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
-            <motion.p initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="inline-flex items-center gap-2 rounded-full border-2 border-ink bg-white/60 px-3 py-1.5 text-[10px] font-black uppercase tracking-[.16em] shadow-hard-sm">
-              <span className="h-2 w-2 rounded-full bg-orange" /> Memento Mundi
-            </motion.p>
-            <motion.h1 initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }} className="mt-5 font-display ![font-size:clamp(3.25rem,13vw,5.75rem)] leading-[.86] tracking-[-.04em]">
-              Viaja.<br />Guarda.<br /><span className="text-orange">Vuelve.</span>
-            </motion.h1>
-            <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.18 }} className="mt-6 max-w-md text-base font-medium leading-relaxed text-ink/70 sm:text-lg">
-              Una pegatina, tus fotos y tu gente. Tu viaje, convertido en un scrapbook que se abre con el móvil.
-            </motion.p>
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.26 }} className="mt-8 flex w-full flex-col gap-3 min-[420px]:w-auto min-[420px]:flex-row">
-              <button type="button" onClick={onStore} className="flex min-h-12 items-center justify-center gap-3 rounded-2xl border-2 border-ink bg-orange px-7 py-4 text-sm font-black shadow-hard transition-transform hover:-translate-y-1 active:scale-[.97]">
-                <ShoppingBag size={19} /> Ir a la tienda <ArrowUpRight size={18} />
-              </button>
-              <button type="button" onClick={onLogin} className="flex min-h-12 items-center justify-center gap-2 rounded-2xl border-2 border-ink bg-white/70 px-6 py-4 text-sm font-black transition-transform hover:-translate-y-0.5">
-                Iniciar sesión <ChevronRight size={16} />
-              </button>
-            </motion.div>
-          </div>
-
-          <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.15, duration: 0.6 }} className="relative isolate">
-            <PhotoCarousel3D photos={CAROUSEL_PAISAJES} priority />
-            {/* La mascota despega la pegatina junto a las fotos (isolate: sus capas nunca superan a un diálogo) */}
-            <div className="pointer-events-none absolute -bottom-6 -left-2 z-[120] hidden sm:block lg:-left-6">
-              <Mascot name="28-pegatina-despegar" size="sm" tilt={-8} />
-            </div>
+      <div className="pt-28 sm:pt-40">
+        <ViveMundiBlock priority>
+          <motion.div initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="mt-10 flex flex-col items-center gap-3 min-[420px]:flex-row min-[420px]:justify-center">
+            <button type="button" onClick={onStore} className="flex min-h-12 w-full items-center justify-center gap-3 rounded-2xl border-2 border-ink bg-orange px-7 py-4 text-sm font-black shadow-hard transition-transform hover:-translate-y-1 active:scale-[.97] min-[420px]:w-auto">
+              <ShoppingBag size={19} /> Ir a la tienda <ArrowUpRight size={18} />
+            </button>
+            <button type="button" onClick={onLogin} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border-2 border-ink bg-white/70 px-6 py-4 text-sm font-black transition-transform hover:-translate-y-0.5 min-[420px]:w-auto">
+              Iniciar sesión <ChevronRight size={16} />
+            </button>
           </motion.div>
-        </section>
+        </ViveMundiBlock>
       </div>
+
+      <RecuerdaMementoBlock />
 
       {/* Banda de foto: el nombre de la marca, explicado en una línea */}
       <section className="mx-auto mt-20 max-w-7xl px-4 sm:mt-24 sm:px-8 lg:px-12">
@@ -87,7 +78,7 @@ export default function Landing({ header, onStore, onLogin }: Props) {
       </section>
 
       {/* Cómo funciona: tres pasos, cada uno con su foto */}
-      <section className="mx-auto mt-20 max-w-7xl px-4 sm:mt-24 sm:px-8 lg:px-12">
+      <section id="como-funciona" className="mx-auto mt-20 max-w-7xl scroll-mt-28 px-4 sm:mt-24 sm:px-8 lg:px-12">
         <motion.div {...fadeUp()} className="flex flex-col items-center text-center">
           <p className="text-[10px] font-black uppercase tracking-[.2em] text-orange">Cómo funciona</p>
           <h2 className="mt-3 font-display ![font-size:clamp(2.25rem,6vw,3.75rem)] leading-[.92] tracking-[-.03em]">Tres pasos. Ningún recuerdo perdido.</h2>
