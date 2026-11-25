@@ -5,6 +5,7 @@ import CharacterGuide from "@/components/CharacterGuide";
 import Mascot, { type MascotName } from "@/components/ui/Mascot";
 import PaisajePhoto, { PhotoTag } from "@/components/home/PaisajePhoto";
 import PhotoCarousel3D from "@/components/home/PhotoCarousel3D";
+import PhotoMosaic from "@/components/home/PhotoMosaic";
 import { CAROUSEL_PAISAJES, PAISAJES, type Paisaje } from "@/lib/paisajes";
 
 type Props = {
@@ -112,6 +113,15 @@ export default function Landing({ header, onStore, onLogin }: Props) {
         <div className="mt-10 flex justify-center px-2">
           <CharacterGuide character="miriam" speech="Pega la pegatina donde quieras: una postal, tu libreta o la maleta." />
         </div>
+      </section>
+
+      {/* Muro de fotos decorativo */}
+      <section className="mx-auto mt-20 max-w-7xl px-4 sm:mt-24 sm:px-8 lg:px-12">
+        <motion.div {...fadeUp()} className="mb-8 flex flex-col items-center text-center sm:mb-10">
+          <p className="text-[10px] font-black uppercase tracking-[.2em] text-orange">Postales del mundo</p>
+          <h2 className="mt-3 font-display text-[clamp(2.25rem,6vw,3.75rem)] leading-[.92] tracking-[-.03em]">Lugares que se quedan.</h2>
+        </motion.div>
+        <PhotoMosaic />
       </section>
 
       {/* Cierre: llamada a la tienda con foto */}

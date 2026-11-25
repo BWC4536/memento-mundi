@@ -40,10 +40,13 @@ export default function PhotoCarousel3D({ photos, className = "", priority = fal
 
   const count = photos.length;
   const step = 360 / count;
-  // Móvil: las tarjetas laterales asoman por los bordes; escritorio: el anillo cabe entero.
-  const cardWidth = Math.round(clamp((width || 320) * (width < 480 ? 0.5 : 0.42), 140, 240));
+  // Radio justo para que las tarjetas vecinas se rocen sin solaparse, sea cual sea el número de fotos.
+  const spread = 0.6 / Math.sin(Math.PI / count);
+  const available = width || 320;
+  // Móvil: tarjeta grande y las laterales asoman por los bordes; resto: el anillo cabe en el contenedor.
+  const cardWidth = Math.round(clamp(available < 480 ? available * 0.5 : available / (1 + 1.5 * spread), 140, 240));
   const cardHeight = Math.round(cardWidth * 1.36);
-  const ringRadius = Math.round(cardWidth * 1.02);
+  const ringRadius = Math.round(cardWidth * spread);
   const radius = useMotionValue(ringRadius);
 
   useEffect(() => radius.set(ringRadius), [radius, ringRadius]);
@@ -120,7 +123,7 @@ export default function PhotoCarousel3D({ photos, className = "", priority = fal
     >
       <div
         className="relative mx-auto cursor-grab touch-pan-y active:cursor-grabbing"
-        style={{ height: cardHeight + 36, perspective: cardWidth * 4.2 }}
+        style={{ height: cardHeight + 36, perspective: Math.max(cardWidth * 4.2, ringRadius * 2.6) }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={endDrag}
@@ -129,7 +132,7 @@ export default function PhotoCarousel3D({ photos, className = "", priority = fal
         onPointerLeave={(event) => { if (event.pointerType === "mouse") hovering.current = false; }}
       >
         {/* Sombra en el suelo */}
-        <div aria-hidden className="absolute bottom-0 left-1/2 h-7 -translate-x-1/2 rounded-[50%] bg-ink/20 blur-md" style={{ width: cardWidth * 2.4 }} />
+        <div aria-hidden className="absolute bottom-0 left-1/2 h-7 -translate-x-1/2 rounded-[50%] bg-ink/20 blur-md" style={{ width: Math.min(ringRadius * 2 + cardWidth, available) }} />
         {photos.map((photo, index) => (
           <CarouselCard
             key={photo.slug}

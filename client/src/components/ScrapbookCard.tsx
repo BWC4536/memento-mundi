@@ -26,6 +26,15 @@ const initials = (name: string) =>
     .map((part) => part[0]!.toUpperCase())
     .join("");
 
+/** El título siempre se ve entero: cuanto más largo, más pequeña la letra (y hasta 2 líneas). */
+const titleSize = (title: string) => {
+  const length = title.trim().length;
+  if (length <= 8) return "text-2xl sm:text-[1.65rem]";
+  if (length <= 14) return "text-xl sm:text-2xl";
+  if (length <= 24) return "text-lg sm:text-xl";
+  return "text-base sm:text-lg";
+};
+
 /** Número de elementos del lienzo (fotos, pegatinas, textos…); si aún no hay composición, el contador del servidor. */
 export function countScrapbookItems(book: Scrapbook) {
   return Math.max(book.photos, book.composition?.elements.length ?? 0);
@@ -128,7 +137,7 @@ export default function ScrapbookCard({ book, menuOpen, onOpen, onToggleMenu, me
 
       <div className="flex min-w-0 flex-1 flex-col px-1 pb-0.5 pt-3.5">
         <div className="flex items-start gap-2">
-          <h2 className="min-w-0 flex-1 truncate font-display text-2xl font-black leading-tight tracking-tight sm:text-[1.65rem]" title={book.title}>
+          <h2 className={`min-w-0 flex-1 line-clamp-2 break-words font-display font-black leading-[.95] tracking-tight ${titleSize(book.title)}`} title={book.title}>
             {book.title}
           </h2>
           {isPrivate ? (

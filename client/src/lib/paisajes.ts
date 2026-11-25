@@ -61,10 +61,49 @@ export const PAISAJES = {
     widths: [640, 1080],
     focus: "50% 30%",
   },
+  panama: {
+    slug: "panama-playa",
+    city: "Panamá",
+    place: "Caribe",
+    alt: "Playa caribeña de Panamá con una palmera, tumbonas de madera y una lancha roja",
+    ratio: 9 / 16,
+    widths: [640, 1080],
+    focus: "45% 60%",
+  },
+  alsacia: {
+    slug: "alsacia-canal",
+    city: "Alsacia",
+    place: "Canal en Navidad",
+    alt: "Casas con entramado de madera y luces de Navidad reflejadas en un canal al anochecer",
+    ratio: 3 / 4,
+    widths: [640, 1080, 1600],
+    focus: "50% 62%",
+  },
+  londres: {
+    slug: "londres-big-ben",
+    city: "Londres",
+    place: "Big Ben",
+    alt: "Torre del Big Ben iluminada de noche",
+    ratio: 9 / 16,
+    widths: [576],
+    focus: "50% 72%",
+  },
+  navidad: {
+    slug: "mercado-navidad",
+    city: "Invierno",
+    place: "Mercado navideño",
+    alt: "Mercado de Navidad de noche con un árbol de bolas gigantes y una noria iluminada",
+    ratio: 3 / 4,
+    widths: [640, 1080],
+    focus: "55% 55%",
+  },
 } as const satisfies Record<string, Paisaje>;
 
-/** Orden del carrusel 3D. */
-export const CAROUSEL_PAISAJES: readonly Paisaje[] = [PAISAJES.pragaPuente, PAISAJES.viena, PAISAJES.budapest, PAISAJES.pragaTyn, PAISAJES.collage];
+/** Carrusel del hero de la landing: pocas tarjetas para que el anillo quepa en media columna. */
+export const CAROUSEL_PAISAJES: readonly Paisaje[] = [PAISAJES.pragaPuente, PAISAJES.panama, PAISAJES.viena, PAISAJES.alsacia, PAISAJES.budapest, PAISAJES.londres];
+
+/** Carrusel a todo el ancho: todas las fotos, alternando cálidas y nocturnas. */
+export const ALL_PAISAJES: readonly Paisaje[] = [PAISAJES.panama, PAISAJES.pragaPuente, PAISAJES.alsacia, PAISAJES.londres, PAISAJES.viena, PAISAJES.navidad, PAISAJES.pragaTyn, PAISAJES.budapest, PAISAJES.collage];
 
 export const paisajeSrc = (p: Paisaje, width = p.widths[0]) => `/paisajes/web/${p.slug}-${width}.webp`;
 export const paisajeSrcSet = (p: Paisaje) => p.widths.map((w) => `${paisajeSrc(p, w)} ${w}w`).join(", ");
