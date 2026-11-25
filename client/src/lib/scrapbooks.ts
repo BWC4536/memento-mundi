@@ -1,5 +1,10 @@
 import type { ScrapbookComposition } from "./composition";
 
+export type ScrapbookMember = {
+  name: string;
+  avatarUrl?: string;
+};
+
 export type Scrapbook = {
   id: string;
   title: string;
@@ -23,6 +28,8 @@ export type Scrapbook = {
   source?: "cloud" | "local";
   ownerId?: string;
   isPublic?: boolean;
+  /** Propietario + invitados con nombre/avatar, si se conocen. Si no, la tarjeta usa `invited`. */
+  members?: ScrapbookMember[];
 };
 
 export const demoScrapbooks: Scrapbook[] = [

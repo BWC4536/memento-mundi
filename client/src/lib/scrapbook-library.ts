@@ -83,6 +83,7 @@ export function createScrapbookDraft(title: string, description: string | undefi
     description: description?.trim() || "Una nueva historia por llenar.",
     photos: 0,
     invited: 0,
+    members: undefined,
     updated: "ahora",
     createdAt: iso,
     updatedAt: iso,
