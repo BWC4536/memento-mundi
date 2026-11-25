@@ -1,4 +1,4 @@
-import type { ReactNode, Ref } from "react";
+import type { CSSProperties, ReactNode, Ref } from "react";
 import { motion, type Variants } from "framer-motion";
 import { Ellipsis, Layers, Lock, MapPin, UserRound } from "lucide-react";
 import type { Scrapbook, ScrapbookMember } from "@/lib/scrapbooks";
@@ -26,13 +26,13 @@ const initials = (name: string) =>
     .map((part) => part[0]!.toUpperCase())
     .join("");
 
-/** El título siempre se ve entero: cuanto más largo, más pequeña la letra (y hasta 2 líneas). */
+/**
+ * Tamaño del título: la Brasika es ancha (~.74 em por letra), así que se calcula para que quepa en UNA línea
+ * dentro de la tarjeta (unidades de contenedor). Si ni así cabe (título muy largo), baja a un mínimo legible y pasa a 2 líneas.
+ */
 const titleSize = (title: string) => {
-  const length = title.trim().length;
-  if (length <= 8) return "text-2xl sm:text-[1.65rem]";
-  if (length <= 14) return "text-xl sm:text-2xl";
-  if (length <= 24) return "text-lg sm:text-xl";
-  return "text-base sm:text-lg";
+  const length = Math.max(title.trim().length, 1);
+  return `clamp(1.05rem, calc(74cqi / ${(length * 0.74).toFixed(2)}), 1.9rem)`;
 };
 
 /** Número de elementos del lienzo (fotos, pegatinas, textos…); si aún no hay composición, el contador del servidor. */
@@ -110,7 +110,7 @@ export default function ScrapbookCard({ book, menuOpen, onOpen, onToggleMenu, me
       role="button"
       tabIndex={0}
       aria-label={`Abrir ${book.title}`}
-      className={`group relative flex h-full cursor-pointer flex-col rounded-[1.5rem] border-2 border-ink ${book.palette} p-2.5 shadow-hard-sm transition-shadow duration-200 hover:shadow-hard focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-orange/50 sm:p-3 ${menuOpen ? "z-30" : "z-0"}`}
+      className={`@container group relative flex h-full cursor-pointer flex-col rounded-[1.5rem] border-2 border-ink ${book.palette} p-2.5 shadow-hard-sm transition-shadow duration-200 hover:shadow-hard focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-orange/50 sm:p-3 ${menuOpen ? "z-30" : "z-0"}`}
     >
       <div className="relative aspect-[4/3] overflow-hidden rounded-[1.1rem] border-2 border-ink bg-cream">
         <img
@@ -137,7 +137,7 @@ export default function ScrapbookCard({ book, menuOpen, onOpen, onToggleMenu, me
 
       <div className="flex min-w-0 flex-1 flex-col px-1 pb-0.5 pt-3.5">
         <div className="flex items-start gap-2">
-          <h2 className={`min-w-0 flex-1 line-clamp-2 break-words font-display font-black leading-[.95] tracking-tight ${titleSize(book.title)}`} title={book.title}>
+          <h2 className="min-w-0 flex-1 line-clamp-2 break-words font-display font-black !leading-[1] tracking-tight ![font-size:var(--title-size)]" style={{ "--title-size": titleSize(book.title) } as CSSProperties} title={book.title}>
             {book.title}
           </h2>
           {isPrivate ? (

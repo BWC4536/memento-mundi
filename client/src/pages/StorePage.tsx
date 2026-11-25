@@ -5,9 +5,13 @@ import { useAppAuth } from "@/hooks/useAppAuth";
 import StickerScrollHero from "@/components/StickerScrollHero";
 import CharacterGuide from "@/components/CharacterGuide";
 import Mascot from "@/components/ui/Mascot";
+import PageHero from "@/components/home/PageHero";
+import PaisajePhoto from "@/components/home/PaisajePhoto";
+import PhotoMosaic from "@/components/home/PhotoMosaic";
+import { PAISAJES, type Paisaje } from "@/lib/paisajes";
 
 type ProductKind = "sticker" | "keyring" | "magnet" | "ornament" | "wall";
-type Pack = { id: string; name: string; kicker: string; description: string; price: string; badge?: string; color: string; image: string; items: string[]; featured?: boolean };
+type Pack = { id: string; name: string; kicker: string; description: string; price: string; badge?: string; color: string; photo: Paisaje; items: string[]; featured?: boolean };
 
 const products: Record<ProductKind, { label: string; icon: string }> = {
   sticker: { label: "Pegatina NFC + QR", icon: "✦" },
@@ -18,12 +22,12 @@ const products: Record<ProductKind, { label: string; icon: string }> = {
 };
 
 const packs: Pack[] = [
-  { id: "sticker", name: "Pack Pegatinas", kicker: "El punto de partida", description: "Una pegatina NFC + QR para desbloquear tu scrapbook al instante.", price: "12 €", badge: "Más fácil", color: "bg-[#d8e2dc]", image: "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&w=1000&q=85", items: ["sticker"] },
-  { id: "duo", name: "Pack Viaje", kicker: "Para llevar contigo", description: "Pegatina + llavero para que tu destino vaya siempre en tu mochila.", price: "24 €", color: "bg-[#e7d8c2]", image: "https://images.unsplash.com/photo-1500534623283-312aade485b7?auto=format&fit=crop&w=1000&q=85", items: ["sticker", "keyring"] },
-  { id: "home", name: "Pack Vuelta a casa", kicker: "Tu recuerdo diario", description: "Pegatina + imán para convertir la nevera en tu pequeño atlas.", price: "26 €", color: "bg-[#f2c5a0]", image: "https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&w=1000&q=85", items: ["sticker", "magnet"] },
-  { id: "festive", name: "Pack Celebración", kicker: "Para regalar", description: "Pegatina + bola de Navidad: un viaje que vuelve cada diciembre.", price: "30 €", color: "bg-[#d9d1bd]", image: "https://images.unsplash.com/photo-1512389142860-9c449e58a543?auto=format&fit=crop&w=1000&q=85", items: ["sticker", "ornament"] },
-  { id: "wall", name: "Pack Pieza de ciudad", kicker: "El recuerdo que se queda", description: "Pegatina + imán + cuadro de pared con una pieza de la ciudad que fue.", price: "58 €", badge: "Nuevo", color: "bg-[#cbd8d1]", image: "https://images.unsplash.com/photo-1530789253388-582c481c54b0?auto=format&fit=crop&w=1000&q=85", items: ["sticker", "magnet", "wall"], featured: true },
-  { id: "mundi", name: "Pack Memento Mundi", kicker: "Todo el ritual", description: "La colección completa: pegatina, llavero, imán, bola y cuadro de ciudad.", price: "84 €", badge: "Completo", color: "bg-[#fa9223]", image: "https://images.unsplash.com/photo-1527631746610-bca00a040d60?auto=format&fit=crop&w=1000&q=85", items: ["sticker", "keyring", "magnet", "ornament", "wall"], featured: true },
+  { id: "sticker", name: "Pack Pegatinas", kicker: "El punto de partida", description: "Una pegatina NFC + QR para desbloquear tu scrapbook al instante.", price: "12 €", badge: "Más fácil", color: "bg-[#d8e2dc]", photo: PAISAJES.pragaPuente, items: ["sticker"] },
+  { id: "duo", name: "Pack Viaje", kicker: "Para llevar contigo", description: "Pegatina + llavero para que tu destino vaya siempre en tu mochila.", price: "24 €", color: "bg-[#e7d8c2]", photo: PAISAJES.panama, items: ["sticker", "keyring"] },
+  { id: "home", name: "Pack Vuelta a casa", kicker: "Tu recuerdo diario", description: "Pegatina + imán para convertir la nevera en tu pequeño atlas.", price: "26 €", color: "bg-[#f2c5a0]", photo: PAISAJES.alsacia, items: ["sticker", "magnet"] },
+  { id: "festive", name: "Pack Celebración", kicker: "Para regalar", description: "Pegatina + bola de Navidad: un viaje que vuelve cada diciembre.", price: "30 €", color: "bg-[#d9d1bd]", photo: PAISAJES.navidad, items: ["sticker", "ornament"] },
+  { id: "wall", name: "Pack Pieza de ciudad", kicker: "El recuerdo que se queda", description: "Pegatina + imán + cuadro de pared con una pieza de la ciudad que fue.", price: "58 €", badge: "Nuevo", color: "bg-[#cbd8d1]", photo: PAISAJES.budapest, items: ["sticker", "magnet", "wall"], featured: true },
+  { id: "mundi", name: "Pack Memento Mundi", kicker: "Todo el ritual", description: "La colección completa: pegatina, llavero, imán, bola y cuadro de ciudad.", price: "84 €", badge: "Completo", color: "bg-[#fa9223]", photo: PAISAJES.viena, items: ["sticker", "keyring", "magnet", "ornament", "wall"], featured: true },
 ];
 
 function StoreHeader({ onLogin, loggedIn }: { onLogin: () => void; loggedIn: boolean }) {
@@ -55,7 +59,7 @@ function PackCard({ pack, onAdd }: { pack: Pack; onAdd: (pack: Pack) => void }) 
     <article className={`group relative flex flex-col justify-between overflow-hidden rounded-[1.7rem] border-2 border-ink ${pack.color} p-3.5 shadow-hard transition-transform duration-200 hover:-translate-y-1`}>
       <div>
         <div className="relative aspect-[1.25/1] overflow-hidden rounded-[1.2rem] border-2 border-ink bg-ink">
-          <img src={pack.image} alt={pack.name} className="h-full w-full object-cover opacity-90 transition-transform duration-500 group-hover:scale-105" />
+          <PaisajePhoto photo={pack.photo} sizes="(min-width: 1024px) 28vw, (min-width: 640px) 45vw, 100vw" decorative className="opacity-90 transition-transform duration-500 group-hover:scale-105" />
           <div className="absolute inset-0 bg-gradient-to-t from-ink/80 via-transparent to-transparent" />
           <div className="absolute left-3 right-3 top-3 flex flex-wrap items-center gap-2">
             <span className="rounded-full border-2 border-ink bg-cream px-2.5 py-1 text-[10px] font-black uppercase tracking-wider">{pack.kicker}</span>
@@ -110,12 +114,9 @@ export default function StorePage() {
       <div className="relative z-10 mx-auto max-w-7xl px-4 pt-24 sm:px-8 sm:pt-28 lg:px-12">
         <StoreHeader onLogin={handleLogin} loggedIn={isAuthenticated} />
 
-        <section className="mt-10 sm:mt-14">
-          <p className="text-[10px] font-black uppercase tracking-[.2em] text-orange">Memento Mundi · tienda</p>
-          <h1 className="mt-2 max-w-3xl break-words font-display text-5xl font-black leading-[.9] tracking-[-.06em] sm:text-7xl">
-            Objetos para<br /><span className="text-orange">volver.</span>
-          </h1>
-        </section>
+        <PageHero className="mt-8 sm:mt-10" photo={PAISAJES.navidad} eyebrow="Memento Mundi · tienda" title={<>Objetos para<br /><span className="text-orange">volver.</span></>} priority>
+          Pegatinas, llaveros e imanes para que cada viaje tenga su punto de partida.
+        </PageHero>
 
         
         {/* Pasos de uso */}
@@ -196,16 +197,17 @@ export default function StorePage() {
             </div>
 
             <div className="relative mx-auto w-full max-w-sm rotate-[3deg] sm:rotate-[4deg] rounded-2xl border-2 border-ink bg-cream p-3 shadow-hard">
-              <img
-                src="https://images.unsplash.com/photo-1470770841072-f978cf4d019e?auto=format&fit=crop&w=900&q=85"
-                alt="Paisaje de destino"
-                className="aspect-[4/3] w-full rounded-xl border-2 border-ink object-cover"
-              />
+<div className="aspect-[4/3] w-full overflow-hidden rounded-xl border-2 border-ink bg-ink"><PaisajePhoto photo={PAISAJES.alsacia} sizes="(min-width: 640px) 384px, 90vw" /></div>
               <div className="absolute -bottom-3 -left-3 rotate-[-7deg] rounded-lg border-2 border-ink bg-orange px-3 py-1.5 font-mono text-[11px] font-black shadow-hard-sm">
                 LA CIUDAD QUE FUE
               </div>
             </div>
           </div>
+        </section>
+
+        {/* Postales: muro decorativo de fotos */}
+        <section className="mt-20" aria-label="Postales del mundo">
+          <PhotoMosaic />
         </section>
 
         <footer className="mt-16 flex flex-col justify-between gap-4 border-t-2 border-ink/15 pt-6 text-xs font-bold text-ink/60 sm:flex-row pb-6">

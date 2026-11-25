@@ -1,11 +1,11 @@
-@import url('https://fonts.cdnfonts.com/css/brasika-display-trial');
 @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Caveat:wght@500;700&family=Space+Mono:wght@400;700&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
 
 @font-face {
   font-family: "Brasika Display - Trial";
-  src: url("/__manus__/brasika-display-trial.otf") format("opentype");
+  /* Copia con á é í ó ú ü ñ (y mayúsculas) montadas sobre la Brasika Trial, que no las trae. */
+  src: url("/fonts/brasika-display-es.otf") format("opentype");
   font-style: normal;
   font-weight: 400;
   font-display: swap;
@@ -13,8 +13,7 @@
 
 @font-face {
   font-family: "Briska";
-  src: url("/__manus__/brasika-display-trial.otf") format("opentype"),
-    url("https://drive.google.com/uc?export=download&id=1p2VVe_CI3QIhrn_DM16RC2zIAOavpfdP") format("opentype");
+  src: url("/fonts/brasika-display-es.otf") format("opentype");
   font-style: normal;
   font-weight: 400;
   font-display: swap;

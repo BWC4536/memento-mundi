@@ -1,6 +1,8 @@
 import { Fragment, useEffect } from "react";
 import { ArrowLeft, Cookie } from "lucide-react";
 import { Link } from "wouter";
+import PageHero from "@/components/home/PageHero";
+import { PAISAJES } from "@/lib/paisajes";
 import { openCookiePreferences } from "@/lib/cookie-consent";
 import { LEGAL_DOCS, LEGAL_LIST, LEGAL_UPDATED, type LegalBlock, type LegalSlug } from "@/lib/legal";
 
@@ -100,10 +102,10 @@ export default function LegalPage({ slug }: { slug: LegalSlug }) {
           ))}
         </nav>
 
+        <PageHero compact className="mt-6" photo={PAISAJES.viena} eyebrow={`Actualizada el ${LEGAL_UPDATED}`} title={doc.title} />
+
         <article className="mt-6 rounded-[2rem] border-2 border-ink bg-white/60 p-5 shadow-hard sm:p-10">
-          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-orange">Actualizada el {LEGAL_UPDATED}</p>
-          <h1 className="mt-3 !text-[clamp(2.2rem,7vw,4rem)]">{doc.title}</h1>
-          <p className="mt-4 text-lg font-semibold text-ink/65">{doc.summary}</p>
+          <p className="text-lg font-semibold text-ink/65">{doc.summary}</p>
 
           {slug === "cookies" ? (
             <button type="button" onClick={openCookiePreferences} className="mt-6 flex min-h-12 items-center gap-2 rounded-xl border-2 border-ink bg-orange px-5 text-sm font-black shadow-hard-sm">
