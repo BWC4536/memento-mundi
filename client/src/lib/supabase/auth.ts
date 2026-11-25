@@ -75,14 +75,25 @@ export function createAuthStore(client: SupabaseClient, storage: Pick<Storage, "
     emit();
   };
 
-  try {
-    const raw = storage?.getItem(SESSION_STORAGE_KEY);
-    if (raw) {
+  const readStored = (): SupabaseSession | null => {
+    try {
+      const raw = storage?.getItem(SESSION_STORAGE_KEY);
+      if (!raw) return null;
       const parsed = JSON.parse(raw) as SupabaseSession;
-      if (parsed?.accessToken && parsed?.refreshToken && parsed?.user?.id) session = parsed;
+      return parsed?.accessToken && parsed?.refreshToken && parsed?.user?.id ? parsed : null;
+    } catch {
+      return null;
     }
-  } catch {
-    session = null;
+  };
+
+  session = readStored();
+
+  /** Otra pestaña (o la app reabierta) pudo renovar o cerrar la sesión: adoptamos lo que hay guardado. */
+  function syncFromStorage() {
+    const stored = readStored();
+    if (stored?.refreshToken === session?.refreshToken && stored?.accessToken === session?.accessToken) return;
+    session = stored;
+    emit();
   }
 
   async function requestEmailCode(email: string, redirectTo?: string) {
@@ -114,7 +125,14 @@ export function createAuthStore(client: SupabaseClient, storage: Pick<Storage, "
         })
         .catch((error) => {
           // Solo cerramos sesión si el servidor rechaza el token; sin red la mantenemos.
-          if (error instanceof SupabaseError && error.status >= 400 && error.status < 500) persist(null);
+          if (error instanceof SupabaseError && error.status >= 400 && error.status < 500) {
+            // Si otra pestaña ya renovó el token (rotación), usamos su sesión en vez de cerrarla.
+            const stored = readStored();
+            if (stored && stored.refreshToken !== current.refreshToken) {
+              session = stored;
+              emit();
+            } else persist(null);
+          }
           return session;
         })
         .finally(() => {
@@ -139,6 +157,7 @@ export function createAuthStore(client: SupabaseClient, storage: Pick<Storage, "
 
   return {
     getSession: () => session,
+    syncFromStorage,
     isReady: () => ready,
     markReady: () => {
       ready = true;
@@ -169,6 +188,18 @@ const browserStorage = () => {
 
 export const supabaseClient = supabaseConfig ? createSupabaseClient(supabaseConfig) : null;
 export const authStore = supabaseClient ? createAuthStore(supabaseClient, browserStorage()) : null;
+
+if (authStore && typeof window !== "undefined") {
+  window.addEventListener("storage", (event) => {
+    if (event.key === SESSION_STORAGE_KEY || event.key === null) authStore.syncFromStorage();
+  });
+  // Pide al navegador que no borre la sesión al liberar espacio (clave en móvil).
+  void navigator.storage?.persist?.().catch(() => undefined);
+  // Al volver a la app (móvil: suspendida en segundo plano) renovamos si el token ha caducado.
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible" && authStore.getSession()) void authStore.getAccessToken();
+  });
+}
 
 let initialised = false;
 let hashError: string | null = null;

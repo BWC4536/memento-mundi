@@ -115,7 +115,7 @@ export default function LoginDialog() {
                 "Te enviaremos un código para entrar sin contraseña. Si es tu primera vez, crearemos tu cuenta."
               ) : (
                 <>
-                  Hemos enviado un código a <strong className="text-ink">{email.trim()}</strong>. Escríbelo aquí o abre el enlace del email en este dispositivo.
+                  Hemos enviado un código a <strong className="text-ink">{email.trim()}</strong>. Escribe aquí los 6 dígitos. Si el correo solo trae un enlace, ábrelo en este mismo navegador.
                 </>
               )}
             </p>
