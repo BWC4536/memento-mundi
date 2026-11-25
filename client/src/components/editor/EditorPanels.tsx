@@ -21,16 +21,15 @@ import {
   LockOpen,
   Minus,
   Plus,
-  Redo2,
   Replace,
   RotateCcw,
   RotateCw,
   Shapes,
   Sparkles,
   Square,
+  StickyNote,
   Trash2,
   Type,
-  Undo2,
   Wand2,
 } from "lucide-react";
 import {
@@ -45,9 +44,11 @@ import {
   FONT_FAMILIES,
   getFilterDefinition,
   getOuterSize,
+  isNote,
   LIMITS,
   moveLayer,
   normalizeCrop,
+  NOTE_COLORS,
   PHOTO_FILTERS,
   removeElement,
   sendToBack,
@@ -65,15 +66,11 @@ import {
   type ScrapbookComposition,
 } from "@/lib/composition";
 import {
-  applyCanvasFormat,
   applyDesignPreset,
   BACKGROUND_SWATCHES,
-  CANVAS_FORMATS,
-  CANVAS_FRAMES,
   DESIGN_PRESETS,
   ELEMENT_COLORS,
   FRAME_LABELS,
-  getCanvasFrameStyle,
   getTextureStyle,
   PHOTO_FRAME_SAMPLES,
   setCanvasBackground,
@@ -87,8 +84,8 @@ import Mascot from "@/components/ui/Mascot";
 export type PanelId = "diseno" | "elementos" | "fotos" | "texto" | "filtros" | "capas" | "ajustes";
 
 export const PANEL_LABELS: Record<PanelId, string> = {
-  diseno: "Diseño",
-  elementos: "Elementos",
+  diseno: "Papel",
+  elementos: "Decorar",
   fotos: "Fotos",
   texto: "Texto",
   filtros: "Filtros",
@@ -111,6 +108,7 @@ export type EditorApi = {
   select: (id: string | null) => void;
   openPanel: (panel: PanelId) => void;
   addText: () => void;
+  addNote: () => void;
   finishText: () => void;
   requestPhotos: (request: PhotoRequest) => void;
   uploading: boolean;
@@ -266,6 +264,7 @@ function Mini({ element, box = 64 }: { element: CanvasElement; box?: number }) {
 }
 
 export function elementLabel(element: CanvasElement) {
+  if (isNote(element)) return element.content?.trim() ? `Nota “${element.content.trim().slice(0, 24)}”` : "Nota vacía";
   if (element.type === "text") return element.content?.trim() ? `“${element.content.trim().slice(0, 28)}”` : "Texto vacío";
   if (element.type === "photo") return `Foto · ${FRAME_LABELS[element.frameId ?? "none"]}`;
   if (element.type === "frame") return `Marco · ${FRAME_LABELS[element.frameId ?? "none"]}`;
@@ -285,85 +284,45 @@ const TYPE_ICON: Record<CanvasElement["type"], typeof Type> = {
 /* Diseño                                                                      */
 /* ------------------------------------------------------------------------- */
 
-function PresetPreview({ background, texture, frame }: { background: string; texture: (typeof TEXTURES)[number]["id"]; frame: (typeof CANVAS_FRAMES)[number]["id"] }) {
+function PresetPreview({ background, texture }: { background: string; texture: (typeof TEXTURES)[number]["id"] }) {
   const textureStyle = getTextureStyle(texture, background);
-  const frameStyle = getCanvasFrameStyle(frame, background);
   return (
-    <span className="relative block aspect-[4/3] w-full overflow-hidden rounded-lg border-2 border-ink" style={{ background, ["--mm-u" as string]: "0.12px" } as CSSProperties}>
+    <span className="relative block aspect-[4/3] w-full overflow-hidden rounded-lg border-2 border-ink" style={{ background, ["--mm-u" as string]: "0.35px" } as CSSProperties}>
       {textureStyle ? <span className="absolute inset-0" style={textureStyle} /> : null}
-      {frameStyle ? <span className="absolute" style={frameStyle} /> : null}
     </span>
   );
 }
 
 export function DesignPanel({ api }: { api: EditorApi }) {
   const { canvas } = api.composition;
+  const hasPhotos = api.composition.elements.some((element) => element.type === "photo" || element.type === "frame");
   return (
     <div>
-      <Section
-        title="Historial"
-        action={
-          <div className="flex gap-2">
-            <ActionButton onClick={api.undo} disabled={!api.canUndo} label="Deshacer">
-              <Undo2 size={16} />
-            </ActionButton>
-            <ActionButton onClick={api.redo} disabled={!api.canRedo} label="Rehacer">
-              <Redo2 size={16} />
-            </ActionButton>
-          </div>
-        }
-      >
-        <p className="text-[12px] font-semibold text-cream/55">Los cambios del panel Diseño se ven al instante en el lienzo.</p>
-      </Section>
-
-      <Section title="Presets visuales">
-        <div className="grid grid-cols-2 gap-2">
+      <Section title="Estilo del cuaderno">
+        <div className="grid grid-cols-3 gap-2">
           {DESIGN_PRESETS.map((preset) => {
-            const active = canvas.background.toUpperCase() === preset.background && canvas.texture === preset.texture && canvas.frame === preset.frame;
+            const active = canvas.background.toUpperCase() === preset.background && (canvas.texture ?? "none") === preset.texture;
             return (
               <button
                 key={preset.id}
                 type="button"
                 aria-pressed={active}
                 onClick={() => api.apply((composition) => applyDesignPreset(composition, preset.id))}
-                className={`rounded-xl border-2 p-1.5 text-left transition-colors ${active ? "border-orange bg-orange/15" : "border-cream/20 hover:border-orange"}`}
+                className={`rounded-xl border-2 p-1 text-left transition-colors ${active ? "border-orange bg-orange/15" : "border-cream/20 hover:border-orange"}`}
               >
-                <PresetPreview background={preset.background} texture={preset.texture} frame={preset.frame} />
-                <span className="mt-1.5 block px-0.5 text-[12px] font-black text-cream">{preset.label}</span>
+                <PresetPreview background={preset.background} texture={preset.texture} />
+                <span className="mt-1 block truncate px-0.5 text-[11px] font-black text-cream">{preset.label}</span>
               </button>
             );
           })}
         </div>
       </Section>
 
-      <Section title="Formato del lienzo">
-        <div className="grid grid-cols-3 gap-2">
-          {CANVAS_FORMATS.map((format) => {
-            const ratio = format.width / format.height;
-            return (
-              <button
-                key={format.id}
-                type="button"
-                aria-pressed={canvas.formatId === format.id}
-                onClick={() => api.apply((composition) => applyCanvasFormat(composition, format.id))}
-                className={`flex flex-col items-center gap-1.5 rounded-xl border-2 px-1 py-2 text-[11px] font-black ${canvas.formatId === format.id ? "border-orange bg-orange text-ink" : "border-cream/20 text-cream hover:border-orange"}`}
-              >
-                <span className="flex h-8 items-center">
-                  <span className="block rounded-[3px] border-2 border-current" style={{ width: ratio >= 1 ? 30 : 30 * ratio, height: ratio >= 1 ? 30 / ratio : 30 }} />
-                </span>
-                {format.label}
-                <span className="text-[10px] opacity-70">{format.hint}</span>
-              </button>
-            );
-          })}
-        </div>
+      <Section title="Color">
+        <Swatches colors={BACKGROUND_SWATCHES.map((swatch) => swatch.value)} value={canvas.background} label="Color del papel" onChange={(color) => api.apply((composition) => setCanvasBackground(composition, color))} />
       </Section>
 
-      <Section title="Fondo">
-        <Swatches colors={BACKGROUND_SWATCHES.map((swatch) => swatch.value)} value={canvas.background} label="Color de fondo" onChange={(color) => api.apply((composition) => setCanvasBackground(composition, color))} />
-      </Section>
-
-      <Section title="Textura">
+      <Section title="Patrón">
         <div className="flex flex-wrap gap-2">
           {TEXTURES.map((texture) => (
             <ChipButton key={texture.id} active={(canvas.texture ?? "none") === texture.id} onClick={() => api.apply((composition) => updateCanvas(composition, { texture: texture.id }))}>
@@ -373,28 +332,28 @@ export function DesignPanel({ api }: { api: EditorApi }) {
         </div>
       </Section>
 
-      <Section title="Marco general">
-        <div className="flex flex-wrap gap-2">
-          {CANVAS_FRAMES.map((frame) => (
-            <ChipButton key={frame.id} active={(canvas.frame ?? "none") === frame.id} onClick={() => api.apply((composition) => updateCanvas(composition, { frame: frame.id }))}>
-              {frame.label}
-            </ChipButton>
-          ))}
-        </div>
-      </Section>
+      {hasPhotos ? (
+        <Section title="Ordenar fotos">
+          <div className="grid grid-cols-1 gap-2">
+            <ActionButton onClick={() => api.apply((composition) => arrangePhotos(composition, "collage"))}>
+              <Sparkles size={16} /> Collage libre
+            </ActionButton>
+            <ActionButton onClick={() => api.apply((composition) => arrangePhotos(composition, "grid"))}>
+              <LayoutGrid size={16} /> Cuadrícula
+            </ActionButton>
+            <ActionButton onClick={() => api.apply((composition) => arrangePhotos(composition, "straighten"))}>
+              <Square size={16} /> Enderezar
+            </ActionButton>
+          </div>
+        </Section>
+      ) : null}
 
-      <Section title="Estilo de composición">
-        <div className="grid grid-cols-1 gap-2">
-          <ActionButton onClick={() => api.apply((composition) => arrangePhotos(composition, "collage"))}>
-            <Sparkles size={16} /> Collage libre
-          </ActionButton>
-          <ActionButton onClick={() => api.apply((composition) => arrangePhotos(composition, "grid"))}>
-            <LayoutGrid size={16} /> Cuadrícula ordenada
-          </ActionButton>
-          <ActionButton onClick={() => api.apply((composition) => arrangePhotos(composition, "straighten"))}>
-            <Square size={16} /> Enderezar fotos
-          </ActionButton>
-        </div>
+      <Section title="Moverte por el cuaderno">
+        <ul className="space-y-1 text-[12px] font-semibold text-cream/60">
+          <li>Arrastra el papel o usa dos dedos para moverte.</li>
+          <li>Pellizca, o Ctrl + rueda, para acercar y alejar.</li>
+          <li>Doble toque en el papel: nota nueva.</li>
+        </ul>
       </Section>
     </div>
   );
@@ -617,6 +576,7 @@ export function TextPanel({ api }: { api: EditorApi }) {
   const textRef = useRef<HTMLTextAreaElement>(null);
   const selected = api.selected?.type === "text" ? api.selected : undefined;
   const style = { ...DEFAULT_TEXT_STYLE, ...selected?.textStyle };
+  const note = isNote(selected);
 
   useLayoutEffect(() => {
     if (!api.textFocusToken || !textRef.current) return;
@@ -629,15 +589,20 @@ export function TextPanel({ api }: { api: EditorApi }) {
 
   return (
     <div>
-      <Section title="Capas de texto">
-        <ActionButton tone={selected ? "default" : "primary"} onClick={api.addText}>
-          <Type size={18} /> Añadir texto
-        </ActionButton>
+      <Section title="Añadir">
+        <div className="grid grid-cols-2 gap-2">
+          <ActionButton tone={selected ? "default" : "primary"} onClick={api.addNote}>
+            <StickyNote size={18} /> Nota
+          </ActionButton>
+          <ActionButton onClick={api.addText}>
+            <Type size={18} /> Título
+          </ActionButton>
+        </div>
       </Section>
 
       {selected ? (
         <>
-          <Section title="Escribe tu texto">
+          <Section title={note ? "Escribe tu nota" : "Escribe tu texto"}>
             <textarea
               ref={textRef}
               aria-label="Texto de la capa"
@@ -664,7 +629,7 @@ export function TextPanel({ api }: { api: EditorApi }) {
                 Listo
               </ActionButton>
               <ActionButton tone="danger" onClick={() => api.apply((composition) => removeElement(composition, selected.id), { select: null })}>
-                <Trash2 size={16} /> Eliminar texto
+                <Trash2 size={16} /> Eliminar
               </ActionButton>
             </div>
           </Section>
@@ -717,18 +682,24 @@ export function TextPanel({ api }: { api: EditorApi }) {
             <Swatches colors={TEXT_COLORS} value={style.color} label="Color del texto" onChange={(color) => setStyle({ color })} />
           </Section>
 
-          <Section title="Fondo del texto">
-            <div className="flex flex-wrap gap-2">
-              {TEXT_BACKGROUNDS.map((background) => (
-                <ChipButton key={background.id} active={(style.background ?? "transparent") === background.id} onClick={() => setStyle({ background: background.id })}>
-                  {background.label}
-                </ChipButton>
-              ))}
-            </div>
-          </Section>
+          {note ? (
+            <Section title="Color de la nota">
+              <Swatches colors={NOTE_COLORS.map((color) => color.value)} value={style.background} label="Color de la nota" onChange={(color) => setStyle({ background: color })} />
+            </Section>
+          ) : (
+            <Section title="Fondo del texto">
+              <div className="flex flex-wrap gap-2">
+                {TEXT_BACKGROUNDS.map((background) => (
+                  <ChipButton key={background.id} active={(style.background ?? "transparent") === background.id} onClick={() => setStyle({ background: background.id })}>
+                    {background.label}
+                  </ChipButton>
+                ))}
+              </div>
+            </Section>
+          )}
         </>
       ) : (
-        <Hint>Pulsa “Añadir texto” o toca un texto del lienzo para editarlo.</Hint>
+        <Hint>Toca una nota o un texto del cuaderno para editarlo.</Hint>
       )}
     </div>
   );
@@ -823,10 +794,10 @@ export function LayersPanel({ api }: { api: EditorApi }) {
         </Section>
       ) : null}
       <Section title={`Capas · ${ordered.length}`}>
-        {ordered.length === 0 ? <Hint>El lienzo está vacío. Añade fotos, texto o elementos.</Hint> : null}
+        {ordered.length === 0 ? <Hint>El cuaderno está vacío. Añade fotos, notas o decoración.</Hint> : null}
         <ol className="space-y-1.5" aria-label="Orden de las capas, de delante hacia atrás">
           {ordered.map((element, index) => {
-            const Icon = TYPE_ICON[element.type];
+            const Icon = isNote(element) ? StickyNote : TYPE_ICON[element.type];
             const isSelected = selected?.id === element.id;
             return (
               <li key={element.id} className={`flex items-center gap-1 rounded-xl border-2 ${isSelected ? "border-orange bg-orange/15" : "border-cream/15"} ${element.visible === false ? "opacity-50" : ""}`}>
@@ -869,15 +840,14 @@ export function AdjustPanel({ api }: { api: EditorApi }) {
   if (!element) {
     return (
       <div className="space-y-3">
-        <Hint>Toca un elemento del lienzo para seleccionarlo. Después podrás moverlo, cambiar su tamaño, rotarlo y ordenar sus capas.</Hint>
-        <p className="text-[12px] font-semibold text-cream/50">
-          Lienzo de {api.composition.canvas.width} × {api.composition.canvas.height} · {api.composition.elements.length} elementos
-        </p>
+        <Hint>Toca algo del cuaderno para moverlo, girarlo o cambiar su tamaño.</Hint>
+        <p className="text-[12px] font-semibold text-cream/50">{api.composition.elements.length} elementos</p>
       </div>
     );
   }
   const sample = getDecorationSample(element.sampleId);
   const colorable = sample?.colorable || element.type === "frame" || element.type === "photo";
+  const note = isNote(element);
   const id = element.id;
   const set = (patch: Partial<CanvasElement>, record = true) => api.apply((composition) => updateElement(composition, id, patch), { record });
 
@@ -891,7 +861,7 @@ export function AdjustPanel({ api }: { api: EditorApi }) {
       {element.type === "text" ? (
         <div className="mb-4">
           <ActionButton tone="primary" onClick={() => api.openPanel("texto")}>
-            <Type size={16} /> Editar texto y estilo
+            {isNote(element) ? <StickyNote size={16} /> : <Type size={16} />} {isNote(element) ? "Editar nota" : "Editar texto y estilo"}
           </ActionButton>
         </div>
       ) : null}
@@ -945,6 +915,12 @@ export function AdjustPanel({ api }: { api: EditorApi }) {
           </ActionButton>
         </div>
       </Section>
+
+      {note ? (
+        <Section title="Color de la nota">
+          <Swatches colors={NOTE_COLORS.map((color) => color.value)} value={element.textStyle?.background} label="Color de la nota" onChange={(color) => set({ textStyle: { background: color } })} />
+        </Section>
+      ) : null}
 
       {colorable ? (
         <Section title={element.type === "photo" || element.type === "frame" ? "Color del marco" : "Color"}>

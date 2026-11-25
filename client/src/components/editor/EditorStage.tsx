@@ -1,70 +1,87 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { Lock, RotateCw } from "lucide-react";
 import {
-  clampCanvasZoom,
   clampElementScale,
   findElement,
+  getCenter,
+  getContentBounds,
   getOuterSize,
-  LIMITS,
   normalizeCrop,
   normalizeRotation,
+  sortByZ,
   updateElement,
   type CanvasElement,
+  type Rect,
   type ScrapbookComposition,
 } from "@/lib/composition";
+import { centerCameraOn, DEFAULT_CAMERA, fitCamera, patternScale, screenToWorld, visibleWorldRect, zoomCameraAt, type Camera } from "@/lib/camera";
 import { snapPosition, snapRotation, type SnapGuides } from "@/lib/editor-snap";
 import { useElementSize } from "@/hooks/useElementSize";
-import { zoomAround, type PanZoomView } from "@/hooks/usePanZoom";
-import CompositionCanvas from "@/components/scrapbook/CompositionCanvas";
+import { ElementNode, PaperTexture } from "@/components/scrapbook/CompositionCanvas";
 
 export type StageApi = {
-  /** Centro de la zona visible, en unidades del lienzo. */
+  /** Centro de la zona visible, en unidades del cuaderno. */
   visibleCenter: () => { x: number; y: number };
-  /** Desplaza la vista para que el elemento quede visible (p. ej. por encima del teclado). */
+  /** Zona del cuaderno visible ahora mismo. */
+  visibleRect: () => Rect;
+  /** Desplaza la vista para que el elemento quede centrado (p. ej. por encima del teclado). */
   revealElement: (id: string, verticalBias?: number) => void;
+  /** Encuadra todo el contenido del cuaderno. */
+  fitToContent: () => void;
+  /** Acerca o aleja manteniendo fijo el centro del visor. */
+  zoomBy: (factor: number) => void;
+  /** Vuelve al 100% sin moverse del sitio. */
+  resetZoom: () => void;
 };
 
 type Props = {
   composition: ScrapbookComposition;
   selectedId: string | null;
-  view: PanZoomView;
-  onViewChange: (updater: (view: PanZoomView) => PanZoomView) => void;
+  /** null hasta que se mide el visor: entonces se encuadra el contenido. */
+  camera: Camera | null;
+  onCameraChange: (updater: (camera: Camera) => Camera) => void;
   onSelect: (id: string | null) => void;
   onBeginChange: () => void;
   onChange: (update: (composition: ScrapbookComposition) => ScrapbookComposition) => void;
   onEditText: (id: string) => void;
   onFillFrame: (id: string) => void;
+  /** Doble toque en el papel: crea una nota en ese punto. */
+  onCreateNote?: (point: { x: number; y: number }) => void;
   cropMode: boolean;
   snapEnabled: boolean;
   emptyState?: ReactNode;
   apiRef?: React.MutableRefObject<StageApi | null>;
-  /** Espacio reservado abajo (toolbar móvil) para calcular el encuadre. */
+  /** Espacio ocupado abajo por la interfaz flotante (para encuadrar). */
   bottomInset?: number;
 };
 
+type ScreenPoint = { x: number; y: number };
+
 type Gesture =
-  | { kind: "pan"; startX: number; startY: number; view: PanZoomView; moved: boolean; background: boolean }
+  | { kind: "pan"; startX: number; startY: number; camera: Camera; moved: boolean; background: boolean }
   | { kind: "move"; id: string; startX: number; startY: number; origin: { x: number; y: number }; moved: boolean; wasSelected: boolean; locked: boolean }
   | { kind: "crop"; id: string; startX: number; startY: number; offsetX: number; offsetY: number; moved: boolean }
-  | { kind: "scale"; id: string; center: { x: number; y: number }; startDistance: number; startScale: number; moved: boolean }
-  | { kind: "rotate"; id: string; center: { x: number; y: number }; startAngle: number; startRotation: number; moved: boolean }
-  | { kind: "pinch-canvas"; distance: number; mid: { x: number; y: number }; view: PanZoomView }
+  | { kind: "scale"; id: string; center: ScreenPoint; startDistance: number; startScale: number; moved: boolean }
+  | { kind: "rotate"; id: string; center: ScreenPoint; startAngle: number; startRotation: number; moved: boolean }
+  | { kind: "pinch-canvas"; distance: number; anchor: { x: number; y: number }; camera: Camera }
   | { kind: "pinch-element"; id: string; distance: number; angle: number; startScale: number; startRotation: number };
 
-const ZOOM_LIMITS = LIMITS.canvasZoom;
 const TAP_SLOP = 4;
+const DOUBLE_TAP_MS = 320;
 const deg = (radians: number) => (radians * 180) / Math.PI;
+const NO_GUIDES: SnapGuides = { vertical: [], horizontal: [] };
 
 export default function EditorStage({
   composition,
   selectedId,
-  view,
-  onViewChange,
+  camera: cameraProp,
+  onCameraChange,
   onSelect,
   onBeginChange,
   onChange,
   onEditText,
   onFillFrame,
+  onCreateNote,
   cropMode,
   snapEnabled,
   emptyState,
@@ -72,70 +89,108 @@ export default function EditorStage({
   bottomInset = 0,
 }: Props) {
   const viewportRef = useRef<HTMLDivElement>(null);
-  const stageRef = useRef<HTMLDivElement>(null);
+  const worldRef = useRef<HTMLDivElement>(null);
   const selectionRef = useRef<HTMLDivElement>(null);
   const viewport = useElementSize(viewportRef);
-  const { width: W, height: H } = composition.canvas;
-  const aspect = W / H;
-  const padding = viewport.width < 640 ? 18 : 48;
-  const availableHeight = Math.max(0, viewport.height - bottomInset);
-  const fitWidth = Math.max(0, Math.min(viewport.width - padding * 2, (availableHeight - padding * 2) * aspect));
-  const stageWidth = fitWidth * view.zoom;
-  const k = stageWidth > 0 ? stageWidth / W : 1;
-  const offsetY = -bottomInset / 2;
+  const camera = cameraProp ?? DEFAULT_CAMERA;
 
-  const pointers = useRef(new Map<number, { x: number; y: number }>());
+  const pointers = useRef(new Map<number, ScreenPoint>());
   const gesture = useRef<Gesture | null>(null);
-  const [guides, setGuides] = useState<SnapGuides>({ vertical: [], horizontal: [] });
+  const lastBackgroundTap = useRef<{ time: number; x: number; y: number } | null>(null);
+  const spacePressed = useRef(false);
+  const [panning, setPanning] = useState(false);
+  const [guides, setGuides] = useState<SnapGuides>(NO_GUIDES);
   const [measuredHeight, setMeasuredHeight] = useState<number | null>(null);
 
-  const latest = useRef({ composition, selectedId, view, k, snapEnabled, cropMode, measuredHeight });
-  latest.current = { composition, selectedId, view, k, snapEnabled, cropMode, measuredHeight };
+  const latest = useRef({ composition, selectedId, camera, viewport, snapEnabled, cropMode, measuredHeight, bottomInset });
+  latest.current = { composition, selectedId, camera, viewport, snapEnabled, cropMode, measuredHeight, bottomInset };
 
   const selected = findElement(composition, selectedId);
 
-  // Alto real del texto seleccionado (su caja es "auto"), para dibujar la selección justa.
+  const fitToContent = useCallback(() => {
+    const { composition: c, viewport: size, bottomInset: inset } = latest.current;
+    if (!size.width || !size.height) return;
+    const bounds = getContentBounds(c, { padding: 0.03, maxAspect: Infinity });
+    onCameraChange(() => fitCamera(bounds, size, { padding: size.width < 640 ? 16 : 48, maxZoom: 1, insets: { bottom: inset } }));
+  }, [onCameraChange]);
+
+  // Primera medida del visor: encuadramos el contenido.
+  useEffect(() => {
+    if (cameraProp === null && viewport.width > 0 && viewport.height > 0) fitToContent();
+  }, [cameraProp, fitToContent, viewport.height, viewport.width]);
+
+  // Alto real del texto seleccionado (su caja es "auto"), en unidades del cuaderno.
   useLayoutEffect(() => {
-    if (!selected || selected.type !== "text" || !stageRef.current) {
+    if (!selected || selected.type !== "text" || !worldRef.current) {
       setMeasuredHeight(null);
       return;
     }
-    const node = stageRef.current.querySelector<HTMLElement>(`[data-element-id="${CSS.escape(selected.id)}"]`);
-    if (node && k > 0) setMeasuredHeight(node.offsetHeight / k);
-  }, [selected, k]);
+    const node = worldRef.current.querySelector<HTMLElement>(`[data-element-id="${CSS.escape(selected.id)}"]`);
+    if (node) setMeasuredHeight(node.offsetHeight);
+  }, [selected]);
+
+  // Espacio mantenido = arrastrar mueve el cuaderno (convención de escritorio).
+  useEffect(() => {
+    const isTyping = (target: EventTarget | null) => {
+      const node = target as HTMLElement | null;
+      return !!node && (node.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(node.tagName));
+    };
+    const down = (event: KeyboardEvent) => {
+      if (event.code !== "Space" || isTyping(event.target)) return;
+      event.preventDefault();
+      if (!spacePressed.current) {
+        spacePressed.current = true;
+        setPanning(true);
+      }
+    };
+    const up = (event: KeyboardEvent) => {
+      if (event.code !== "Space") return;
+      spacePressed.current = false;
+      setPanning(false);
+    };
+    window.addEventListener("keydown", down);
+    window.addEventListener("keyup", up);
+    return () => {
+      window.removeEventListener("keydown", down);
+      window.removeEventListener("keyup", up);
+    };
+  }, []);
+
+  const viewportCenter = () => {
+    const { viewport: size, bottomInset: inset } = latest.current;
+    return { x: size.width / 2, y: (size.height - inset) / 2 };
+  };
 
   useEffect(() => {
     if (!apiRef) return;
     apiRef.current = {
-      visibleCenter: () => {
-        const { view: v, k: scale, composition: c } = latest.current;
-        return { x: c.canvas.width / 2 - v.x / scale, y: c.canvas.height / 2 - (v.y - offsetY) / scale };
-      },
+      visibleCenter: () => screenToWorld(latest.current.camera, viewportCenter()),
+      visibleRect: () => visibleWorldRect(latest.current.camera, latest.current.viewport),
       revealElement: (id, verticalBias = 0) => {
-        const { composition: c, k: scale } = latest.current;
+        const { composition: c, viewport: size } = latest.current;
         const element = findElement(c, id);
-        if (!element) return;
-        const outer = getOuterSize(element);
-        const relX = (element.x + outer.width / 2 - c.canvas.width / 2) * scale;
-        const relY = (element.y + outer.height / 2 - c.canvas.height / 2) * scale;
-        onViewChange((current) => ({ ...current, x: -relX, y: verticalBias - relY }));
+        if (!element || !size.width) return;
+        onCameraChange((current) => centerCameraOn(current, getCenter(element), size, verticalBias));
       },
+      fitToContent,
+      zoomBy: (factor) => onCameraChange((current) => zoomCameraAt(current, current.zoom * factor, viewportCenter())),
+      resetZoom: () => onCameraChange((current) => zoomCameraAt(current, 1, viewportCenter())),
     };
-  }, [apiRef, offsetY, onViewChange]);
+  }, [apiRef, fitToContent, onCameraChange]);
 
-  const pointerToStage = useCallback((clientX: number, clientY: number) => {
+  const toViewport = useCallback((clientX: number, clientY: number): ScreenPoint => {
     const rect = viewportRef.current?.getBoundingClientRect();
-    if (!rect) return { x: 0, y: 0 };
-    return { x: clientX - rect.left - rect.width / 2, y: clientY - rect.top - rect.height / 2 - offsetY };
-  }, [offsetY]);
+    if (!rect) return { x: clientX, y: clientY };
+    return { x: clientX - rect.left, y: clientY - rect.top };
+  }, []);
 
   const twoPointerMetrics = () => {
     const [a, b] = Array.from(pointers.current.values());
-    return { distance: Math.hypot(a.x - b.x, a.y - b.y) || 1, angle: deg(Math.atan2(b.y - a.y, b.x - a.x)), mid: pointerToStage((a.x + b.x) / 2, (a.y + b.y) / 2) };
+    return { distance: Math.hypot(a.x - b.x, a.y - b.y) || 1, angle: deg(Math.atan2(b.y - a.y, b.x - a.x)), mid: toViewport((a.x + b.x) / 2, (a.y + b.y) / 2) };
   };
 
   const startPinch = () => {
-    const { composition: c, view: v } = latest.current;
+    const { composition: c, camera: cam } = latest.current;
     const current = gesture.current;
     const metrics = twoPointerMetrics();
     const targetId = current && (current.kind === "move" || current.kind === "scale" || current.kind === "rotate") ? current.id : null;
@@ -144,15 +199,17 @@ export default function EditorStage({
       onBeginChange();
       gesture.current = { kind: "pinch-element", id: target.id, distance: metrics.distance, angle: metrics.angle, startScale: target.scale, startRotation: target.rotation };
     } else {
-      gesture.current = { kind: "pinch-canvas", distance: metrics.distance, mid: metrics.mid, view: v };
+      // El punto del cuaderno bajo los dedos se queda bajo los dedos: zoom y pan a la vez.
+      gesture.current = { kind: "pinch-canvas", distance: metrics.distance, anchor: screenToWorld(cam, metrics.mid), camera: cam };
     }
-    setGuides({ vertical: [], horizontal: [] });
+    setGuides(NO_GUIDES);
   };
 
   const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     const target = event.target as HTMLElement;
     if (target.closest("button, input, textarea, select, [data-stage-ui]")) return;
-    if (event.pointerType === "mouse" && event.button !== 0) return;
+    const middleButton = event.pointerType === "mouse" && event.button === 1;
+    if (event.pointerType === "mouse" && event.button !== 0 && !middleButton) return;
     // Un primer dedo/clic nuevo empieza una interacción limpia (evita punteros "colgados").
     if (event.isPrimary) {
       pointers.current.clear();
@@ -167,7 +224,14 @@ export default function EditorStage({
     }
     if (pointers.current.size > 2) return;
 
-    const { composition: c, selectedId: currentSelected, view: v, cropMode: crop } = latest.current;
+    const { composition: c, selectedId: currentSelected, camera: cam, cropMode: crop } = latest.current;
+    if (middleButton || spacePressed.current) {
+      event.preventDefault();
+      gesture.current = { kind: "pan", startX: event.clientX, startY: event.clientY, camera: cam, moved: false, background: false };
+      setPanning(true);
+      return;
+    }
+
     const handle = target.closest<HTMLElement>("[data-handle]");
     const handleKind = handle?.dataset.handle;
     const selectionRect = selectionRef.current?.getBoundingClientRect();
@@ -197,7 +261,7 @@ export default function EditorStage({
       return;
     }
 
-    gesture.current = { kind: "pan", startX: event.clientX, startY: event.clientY, view: v, moved: false, background: true };
+    gesture.current = { kind: "pan", startX: event.clientX, startY: event.clientY, camera: cam, moved: false, background: true };
   };
 
   const handlePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -205,15 +269,16 @@ export default function EditorStage({
     pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
     const current = gesture.current;
     if (!current) return;
-    const { composition: c, k: scale, snapEnabled: snap, measuredHeight: textHeight } = latest.current;
+    const { composition: c, camera: cam, snapEnabled: snap, measuredHeight: textHeight } = latest.current;
 
     switch (current.kind) {
       case "pan": {
         const dx = event.clientX - current.startX;
         const dy = event.clientY - current.startY;
         if (!current.moved && Math.hypot(dx, dy) < TAP_SLOP) return;
+        if (!current.moved) setPanning(true);
         current.moved = true;
-        onViewChange(() => ({ ...current.view, x: current.view.x + dx, y: current.view.y + dy }));
+        onCameraChange(() => ({ ...current.camera, x: current.camera.x + dx, y: current.camera.y + dy }));
         return;
       }
       case "move": {
@@ -225,9 +290,9 @@ export default function EditorStage({
         current.moved = true;
         const element = findElement(c, current.id);
         if (!element) return;
-        let next = { x: current.origin.x + dxScreen / scale, y: current.origin.y + dyScreen / scale };
+        let next = { x: current.origin.x + dxScreen / cam.zoom, y: current.origin.y + dyScreen / cam.zoom };
         if (snap && !event.altKey) {
-          const result = snapPosition(c, element, next, 7 / scale, element.type === "text" ? textHeight ?? undefined : undefined);
+          const result = snapPosition(c, element, next, 7 / cam.zoom, element.type === "text" ? textHeight ?? undefined : undefined);
           next = { x: result.x, y: result.y };
           setGuides(result.guides);
         }
@@ -243,8 +308,8 @@ export default function EditorStage({
         if (!current.moved) onBeginChange();
         current.moved = true;
         const zoom = normalizeCrop(element.crop).zoom;
-        const sensitivityX = 2 / Math.max(1, element.width * element.scale * scale * zoom);
-        const sensitivityY = 2 / Math.max(1, element.height * element.scale * scale * zoom);
+        const sensitivityX = 2 / Math.max(1, element.width * element.scale * cam.zoom * zoom);
+        const sensitivityY = 2 / Math.max(1, element.height * element.scale * cam.zoom * zoom);
         onChange((composition) => updateElement(composition, current.id, { crop: { ...normalizeCrop(element.crop), offsetX: current.offsetX - dx * sensitivityX, offsetY: current.offsetY - dy * sensitivityY } }));
         return;
       }
@@ -268,8 +333,9 @@ export default function EditorStage({
       case "pinch-canvas": {
         if (pointers.current.size < 2) return;
         const metrics = twoPointerMetrics();
-        const zoomed = zoomAround(current.view, current.view.zoom * (metrics.distance / current.distance), current.mid, ZOOM_LIMITS);
-        onViewChange(() => ({ zoom: clampCanvasZoom(zoomed.zoom), x: zoomed.x + metrics.mid.x - current.mid.x, y: zoomed.y + metrics.mid.y - current.mid.y }));
+        const zoomed = zoomCameraAt(current.camera, current.camera.zoom * (metrics.distance / current.distance), metrics.mid);
+        // Recolocamos para que el punto de anclaje siga bajo los dedos aunque se desplacen.
+        onCameraChange(() => ({ zoom: zoomed.zoom, x: metrics.mid.x - current.anchor.x * zoomed.zoom, y: metrics.mid.y - current.anchor.y * zoomed.zoom }));
         return;
       }
       case "pinch-element": {
@@ -287,7 +353,8 @@ export default function EditorStage({
     if (!pointers.current.has(event.pointerId)) return;
     pointers.current.delete(event.pointerId);
     const current = gesture.current;
-    setGuides({ vertical: [], horizontal: [] });
+    setGuides(NO_GUIDES);
+    if (!spacePressed.current) setPanning(false);
 
     if (pointers.current.size > 0) {
       // Queda un dedo: termina el pinch y no interpretamos el resto como tap.
@@ -296,15 +363,28 @@ export default function EditorStage({
     }
     gesture.current = null;
     if (!current || event.type === "pointercancel") return;
-    const { composition: c } = latest.current;
+    const { composition: c, camera: cam } = latest.current;
 
-    if (current.kind === "pan" && !current.moved && current.background) onSelect(null);
+    if (current.kind === "pan" && !current.moved && current.background) {
+      onSelect(null);
+      // Doble toque en el papel vacío: nota nueva justo ahí.
+      const now = Date.now();
+      const last = lastBackgroundTap.current;
+      if (onCreateNote && last && now - last.time < DOUBLE_TAP_MS && Math.hypot(event.clientX - last.x, event.clientY - last.y) < 24) {
+        lastBackgroundTap.current = null;
+        onCreateNote(screenToWorld(cam, toViewport(event.clientX, event.clientY)));
+      } else {
+        lastBackgroundTap.current = { time: now, x: event.clientX, y: event.clientY };
+      }
+      return;
+    }
+    lastBackgroundTap.current = null;
     if (current.kind === "move" && !current.moved) {
       // Tap sobre la selección: si hay otro elemento visible justo debajo del dedo, lo seleccionamos.
       const hit = document
         .elementsFromPoint(event.clientX, event.clientY)
         .map((node) => (node as HTMLElement).closest<HTMLElement>("[data-element-id]"))
-        .find((node): node is HTMLElement => !!node && !!stageRef.current?.contains(node));
+        .find((node): node is HTMLElement => !!node && !!worldRef.current?.contains(node));
       const hitId = hit?.dataset.elementId;
       if (hitId && hitId !== current.id) {
         onSelect(hitId);
@@ -317,40 +397,40 @@ export default function EditorStage({
     }
   };
 
-  // Rueda: Ctrl/⌘ (o pinch del trackpad) hace zoom; la rueda normal desplaza.
+  // Rueda: Ctrl/⌘ (o pinch del trackpad) hace zoom bajo el cursor; la rueda normal desplaza.
   useEffect(() => {
     const node = viewportRef.current;
     if (!node) return;
     const onWheel = (event: WheelEvent) => {
       event.preventDefault();
+      const unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? node.clientHeight : 1;
       if (event.ctrlKey || event.metaKey) {
-        const point = pointerToStage(event.clientX, event.clientY);
-        const factor = Math.exp(-event.deltaY * 0.01);
-        onViewChange((current) => {
-          const zoomed = zoomAround(current, current.zoom * factor, point, ZOOM_LIMITS);
-          return { ...zoomed, zoom: clampCanvasZoom(zoomed.zoom) };
-        });
-      } else {
-        onViewChange((current) => ({ ...current, x: current.x - event.deltaX, y: current.y - event.deltaY }));
+        const anchor = toViewport(event.clientX, event.clientY);
+        const factor = Math.exp(-event.deltaY * unit * 0.01);
+        onCameraChange((current) => zoomCameraAt(current, current.zoom * factor, anchor));
+        return;
       }
+      const dx = event.shiftKey && !event.deltaX ? event.deltaY : event.deltaX;
+      const dy = event.shiftKey && !event.deltaX ? 0 : event.deltaY;
+      onCameraChange((current) => ({ ...current, x: current.x - dx * unit, y: current.y - dy * unit }));
     };
     node.addEventListener("wheel", onWheel, { passive: false });
     return () => node.removeEventListener("wheel", onWheel);
-  }, [onViewChange, pointerToStage]);
+  }, [onCameraChange, toViewport]);
 
-  const selectionBox = selected ? getSelectionBox(selected, W, H, measuredHeight) : null;
+  const ordered = sortByZ(composition.elements).filter((element) => element.visible !== false);
+  const selectionBox = selected ? getSelectionBox(selected, measuredHeight) : null;
+  const toScreenX = (value: number) => value * camera.zoom + camera.x;
+  const toScreenY = (value: number) => value * camera.zoom + camera.y;
 
   return (
     <div
       ref={viewportRef}
       data-testid="editor-viewport"
-      className="relative h-full w-full touch-none overflow-hidden"
-      style={{
-        backgroundColor: "#132b36",
-        backgroundImage: "radial-gradient(rgba(234,231,218,.14) 1px, transparent 1px)",
-        backgroundSize: `${24 * view.zoom}px ${24 * view.zoom}px`,
-        backgroundPosition: `${view.x}px ${view.y}px`,
-      }}
+      aria-label="Cuaderno infinito"
+      role="application"
+      className={`relative h-full w-full touch-none select-none overflow-hidden ${panning ? "cursor-grabbing" : ""}`}
+      style={{ background: composition.canvas.background, "--mm-u": `${patternScale(camera.zoom)}px` } as CSSProperties}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
@@ -364,91 +444,85 @@ export default function EditorStage({
         if (element?.type === "text") onEditText(element.id);
       }}
     >
+      {composition.canvas.backgroundImage ? <img src={composition.canvas.backgroundImage} alt="" draggable={false} className="pointer-events-none absolute inset-0 h-full w-full object-cover" /> : null}
+      <PaperTexture composition={composition} offset={{ x: `${camera.x}px`, y: `${camera.y}px` }} />
+
+      {/* Capa del mundo: 1 unidad del cuaderno = 1px, escalada por la cámara. */}
       <div
-          className="absolute left-1/2 top-1/2"
+        ref={worldRef}
+        data-world
+        className="absolute left-0 top-0 h-0 w-0"
+        style={{ transform: `translate3d(${camera.x}px, ${camera.y}px, 0) scale(${camera.zoom})`, transformOrigin: "0 0", "--mm-u": "1px" } as CSSProperties}
+      >
+        {ordered.map((element, index) => (
+          <ElementNode key={element.id} element={element} zIndex={index + 1} editing frame={null} />
+        ))}
+      </div>
+
+      {guides.vertical.map((line) => (
+        <span key={`v${line}`} className="pointer-events-none absolute inset-y-0 z-[20] w-0 border-l-2 border-dashed border-orange" style={{ left: toScreenX(line) }} />
+      ))}
+      {guides.horizontal.map((line) => (
+        <span key={`h${line}`} className="pointer-events-none absolute inset-x-0 z-[20] h-0 border-t-2 border-dashed border-orange" style={{ top: toScreenY(line) }} />
+      ))}
+
+      {selected && selectionBox ? (
+        <div
+          ref={selectionRef}
+          data-selection-box
+          className="absolute z-[21]"
           style={{
-            width: stageWidth > 0 ? stageWidth : `min(calc(100vw - 40px), calc((100dvh - 220px) * ${aspect}))`,
-            transform: `translate(-50%, -50%) translate3d(${view.x}px, ${view.y + offsetY}px, 0)`,
+            left: toScreenX(selectionBox.x),
+            top: toScreenY(selectionBox.y),
+            width: selectionBox.width * camera.zoom,
+            height: selectionBox.height * camera.zoom,
+            transform: `rotate(${selected.rotation}deg)`,
+            pointerEvents: "none",
           }}
         >
-          <CompositionCanvas
-            ref={stageRef}
-            composition={composition}
-            mode="edit"
-            label="Lienzo del editor"
-            className="overflow-visible rounded-[6px] shadow-[0_0_0_2px_#0B2130,10px_10px_0_rgba(0,0,0,.35)]"
-            style={{ overflow: "visible" }}
-            emptyState={emptyState}
-          >
-            {/* Recorte visual del lienzo sin cortar las asas de selección */}
-            <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-[9998]" style={{ boxShadow: "0 0 0 100vmax rgba(19,43,54,.72)" }} />
-            {guides.vertical.map((line) => (
-              <span key={`v${line}`} className="pointer-events-none absolute top-0 z-[9999] h-full w-0 border-l-2 border-dashed border-orange" style={{ left: `${(line / W) * 100}%` }} />
-            ))}
-            {guides.horizontal.map((line) => (
-              <span key={`h${line}`} className="pointer-events-none absolute left-0 z-[9999] h-0 w-full border-t-2 border-dashed border-orange" style={{ top: `${(line / H) * 100}%` }} />
-            ))}
-            {selected && selectionBox ? (
-              <div
-                ref={selectionRef}
-                data-selection-box
-                className="absolute z-[10000]"
-                style={{
-                  left: `${selectionBox.left}%`,
-                  top: `${selectionBox.top}%`,
-                  width: `${selectionBox.width}%`,
-                  height: `${selectionBox.height}%`,
-                  transform: `rotate(${selected.rotation}deg)`,
-                  pointerEvents: "none",
-                }}
-              >
-                <div
-                  data-handle="move"
-                  className={`absolute inset-0 rounded-[3px] ${cropMode && selected.type === "photo" ? "cursor-move outline-dashed" : selected.locked ? "cursor-not-allowed" : "cursor-grab active:cursor-grabbing"}`}
-                  style={{ outline: `2px ${cropMode && selected.type === "photo" ? "dashed" : "solid"} #FA9223`, outlineOffset: 3, boxShadow: "0 0 0 5px rgba(11,33,48,.55)", pointerEvents: "auto" }}
-                />
-                {selected.locked ? (
-                  <span className="absolute -top-9 left-1/2 flex h-7 -translate-x-1/2 items-center gap-1 rounded-full border-2 border-ink bg-cream px-2 text-[10px] font-black text-ink">
-                    <Lock size={12} /> Bloqueado
-                  </span>
-                ) : (
-                  <>
-                    <span className="pointer-events-none absolute left-1/2 top-[-34px] h-[30px] w-0 border-l-2 border-orange" />
-                    <span data-handle="rotate" aria-label="Rotar" title="Arrastra para rotar" className="absolute left-1/2 top-[-56px] flex h-11 w-11 -translate-x-1/2 cursor-grab items-center justify-center" style={{ pointerEvents: "auto" }}>
-                      <span className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-ink bg-orange text-ink shadow-[2px_2px_0_#0B2130]">
-                        <RotateCw size={14} strokeWidth={2.8} />
-                      </span>
-                    </span>
-                    {(["-left-[22px] -top-[22px] cursor-nwse-resize", "-right-[22px] -top-[22px] cursor-nesw-resize", "-left-[22px] -bottom-[22px] cursor-nesw-resize", "-right-[22px] -bottom-[22px] cursor-nwse-resize"] as const).map((position) => (
-                      <span key={position} data-handle="scale" aria-label="Cambiar tamaño" className={`absolute flex h-11 w-11 items-center justify-center ${position}`} style={{ pointerEvents: "auto" }}>
-                        <span className="h-4 w-4 rounded-full border-2 border-ink bg-cream shadow-[2px_2px_0_#0B2130]" />
-                      </span>
-                    ))}
-                  </>
-                )}
-                <span className="pointer-events-none absolute -bottom-9 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-ink px-2 py-0.5 text-[10px] font-black tabular-nums text-cream">
-                  {Math.round(selected.scale * 100)}% · {Math.round(selected.rotation)}°
+          <div
+            data-handle="move"
+            className={`absolute inset-0 rounded-[3px] ${cropMode && selected.type === "photo" ? "cursor-move" : selected.locked ? "cursor-not-allowed" : "cursor-grab active:cursor-grabbing"}`}
+            style={{ outline: `2px ${cropMode && selected.type === "photo" ? "dashed" : "solid"} #FA9223`, outlineOffset: 3, boxShadow: "0 0 0 5px rgba(11,33,48,.35)", pointerEvents: "auto" }}
+          />
+          {selected.locked ? (
+            <span className="absolute -top-9 left-1/2 flex h-7 -translate-x-1/2 items-center gap-1 rounded-full border-2 border-ink bg-cream px-2 text-[10px] font-black text-ink">
+              <Lock size={12} /> Bloqueado
+            </span>
+          ) : (
+            <>
+              <span className="pointer-events-none absolute left-1/2 top-[-34px] h-[30px] w-0 border-l-2 border-orange" />
+              <span data-handle="rotate" aria-label="Rotar" title="Arrastra para rotar" className="absolute left-1/2 top-[-56px] flex h-11 w-11 -translate-x-1/2 cursor-grab items-center justify-center" style={{ pointerEvents: "auto" }}>
+                <span className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-ink bg-orange text-ink shadow-[2px_2px_0_#0B2130]">
+                  <RotateCw size={14} strokeWidth={2.8} />
                 </span>
-              </div>
-            ) : null}
-          </CompositionCanvas>
+              </span>
+              {(["-left-[22px] -top-[22px] cursor-nwse-resize", "-right-[22px] -top-[22px] cursor-nesw-resize", "-left-[22px] -bottom-[22px] cursor-nesw-resize", "-right-[22px] -bottom-[22px] cursor-nwse-resize"] as const).map((position) => (
+                <span key={position} data-handle="scale" aria-label="Cambiar tamaño" className={`absolute flex h-11 w-11 items-center justify-center ${position}`} style={{ pointerEvents: "auto" }}>
+                  <span className="h-4 w-4 rounded-full border-2 border-ink bg-cream shadow-[2px_2px_0_#0B2130]" />
+                </span>
+              ))}
+            </>
+          )}
         </div>
+      ) : null}
+
+      {ordered.length === 0 && emptyState ? (
+        <div className="pointer-events-none absolute inset-0 z-[22] flex items-center justify-center p-4" style={{ paddingBottom: bottomInset + 16 }}>
+          {emptyState}
+        </div>
+      ) : null}
     </div>
   );
 }
 
-/** Caja de selección en % del lienzo (con escala aplicada, sin rotación). */
-export function getSelectionBox(element: CanvasElement, canvasWidth: number, canvasHeight: number, measuredTextHeight: number | null) {
+/** Caja de selección en unidades del cuaderno (con escala aplicada, sin rotación). */
+export function getSelectionBox(element: CanvasElement, measuredTextHeight: number | null): Rect {
   const outer = getOuterSize(element);
   const height = element.type === "text" && measuredTextHeight ? measuredTextHeight : outer.height;
   const cx = element.x + outer.width / 2;
   const cy = element.y + height / 2;
   const w = outer.width * element.scale;
   const h = height * element.scale;
-  return {
-    left: ((cx - w / 2) / canvasWidth) * 100,
-    top: ((cy - h / 2) / canvasHeight) * 100,
-    width: (w / canvasWidth) * 100,
-    height: (h / canvasHeight) * 100,
-  };
+  return { x: cx - w / 2, y: cy - h / 2, width: w, height: h };
 }

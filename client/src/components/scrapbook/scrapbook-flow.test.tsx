@@ -112,7 +112,9 @@ describe("flujo completo: editar, guardar, cerrar y ver", () => {
     expect(markup).toContain(">hola</div>");
     expect(markup).toContain("Guardar");
     expect(markup).toContain('aria-label="Cerrar editor"');
-    for (const label of ["Diseño", "Elementos", "Fotos", "Texto", "Filtros", "Capas"]) expect(markup).toContain(label);
+    for (const label of ["Fotos", "Nota", "Texto", "Decorar", "Capas", "Papel"]) expect(markup).toContain(label);
+    // Nada de "formatos" ni marcos de página: el cuaderno no tiene bordes.
+    expect(markup).not.toContain("Formato del lienzo");
   });
 
   it("un scrapbook nuevo empieza vacío con instrucciones", () => {
@@ -120,6 +122,6 @@ describe("flujo completo: editar, guardar, cerrar y ver", () => {
     const composition = getScrapbookComposition(fresh);
     expect(composition.elements).toHaveLength(0);
     const markup = renderToStaticMarkup(<InfiniteCanvasEditor scrapbook={fresh} initialComposition={composition} onSave={() => undefined} onClose={() => {}} />);
-    expect(markup).toContain("Tu página está en blanco");
+    expect(markup).toContain("Tu cuaderno está en blanco");
   });
 });

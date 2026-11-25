@@ -15,8 +15,9 @@ function closestDelta(sources: number[], targets: number[], threshold: number) {
 }
 
 /**
- * Ajusta la posición propuesta de un elemento a los bordes y el centro del
- * lienzo y de los demás elementos (guías opcionales del editor).
+ * Ajusta la posición propuesta de un elemento a los bordes y centros de los
+ * demás elementos (guías opcionales del editor). El cuaderno es infinito, así
+ * que no hay bordes de página a los que imantar.
  * `heightOverride` permite usar el alto real medido de un texto.
  */
 export function snapPosition(
@@ -33,9 +34,8 @@ export function snapPosition(
   const cx = proposed.x + outer.width / 2;
   const cy = proposed.y + height / 2;
 
-  const { width: W, height: H } = composition.canvas;
-  const verticalTargets = [0, W / 2, W];
-  const horizontalTargets = [0, H / 2, H];
+  const verticalTargets: number[] = [];
+  const horizontalTargets: number[] = [];
   for (const other of composition.elements) {
     if (other.id === element.id || other.visible === false) continue;
     const otherOuter = getOuterSize(other);

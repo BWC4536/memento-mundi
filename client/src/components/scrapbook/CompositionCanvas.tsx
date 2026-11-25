@@ -1,6 +1,7 @@
 import { forwardRef, memo, type CSSProperties, type ReactNode } from "react";
 import { ImagePlus } from "lucide-react";
 import {
+  getContentBounds,
   getFilterDefinition,
   getFontCss,
   getFramePadding,
@@ -8,19 +9,24 @@ import {
   getPhotoImageStyle,
   sortByZ,
   DEFAULT_TEXT_STYLE,
+  NOTE_MIN_ASPECT,
+  NOTE_PADDING_X,
+  NOTE_PADDING_Y,
   type CanvasElement,
   type FrameId,
+  type Rect,
   type ScrapbookComposition,
 } from "@/lib/composition";
-import { getCanvasFrameStyle, getTextureStyle, u } from "@/lib/composition-presets";
+import { getTextureStyle, u } from "@/lib/composition-presets";
 import { DecorationArt } from "./decorations";
 
 /**
- * Renderizador ÚNICO de la composición. Lo usan el editor, la vista previa y
- * la pantalla completa, así las tres vistas son idénticas por construcción.
+ * Renderizador ÚNICO de la composición. El editor, la vista previa y la
+ * pantalla completa pintan cada elemento con `ElementNode`, así las tres
+ * vistas son idénticas por construcción.
  *
- * Todo se mide en unidades del lienzo con container queries (`--mm-u`), de
- * modo que la composición escala a cualquier tamaño sin recalcular nada.
+ * Todo se mide en unidades del cuaderno (`--mm-u`): en las vistas con
+ * container queries; en el editor, 1px dentro de una capa escalada.
  */
 
 const pct = (value: number) => `${Math.round(value * 1e6) / 1e4}%`;
@@ -77,6 +83,7 @@ function PhotoContent({ element, editing }: { element: CanvasElement; editing: b
               alt=""
               draggable={false}
               data-filter={element.filter ?? "original"}
+              decoding="async"
               className="pointer-events-none block h-full w-full select-none"
               style={{ ...imageStyle, filter: filter.css === "none" ? undefined : filter.css }}
             />
@@ -113,8 +120,40 @@ function PhotoContent({ element, editing }: { element: CanvasElement; editing: b
 
 function TextContent({ element, editing }: { element: CanvasElement; editing: boolean }) {
   const style = { ...DEFAULT_TEXT_STYLE, ...element.textStyle };
-  const hasBackground = style.background && style.background !== "transparent";
   const fontSize = style.fontSize;
+  const placeholder = editing ? <span style={{ opacity: 0.38 }}>{style.variant === "note" ? "Escribe una nota…" : "Escribe aquí…"}</span> : null;
+
+  if (style.variant === "note") {
+    const paper = style.background && style.background !== "transparent" ? style.background : "#FBE7A1";
+    return (
+      <div
+        data-text-content
+        data-note
+        style={{
+          position: "relative",
+          fontFamily: getFontCss(style.fontFamily),
+          fontSize: u(fontSize),
+          fontWeight: style.fontWeight,
+          fontStyle: style.italic ? "italic" : "normal",
+          color: style.color,
+          textAlign: style.align,
+          lineHeight: 1.2,
+          whiteSpace: "pre-wrap",
+          overflowWrap: "anywhere",
+          backgroundColor: paper,
+          backgroundImage: "linear-gradient(160deg, rgba(255,255,255,.35), transparent 45%)",
+          padding: `${u(fontSize * NOTE_PADDING_Y)} ${u(fontSize * NOTE_PADDING_X)}`,
+          minHeight: u(element.width * NOTE_MIN_ASPECT),
+          borderRadius: `${u(4)} ${u(4)} ${u(18)} ${u(4)}`,
+          boxShadow: `0 0 0 ${u(2)} rgba(11,33,48,.55), ${u(6)} ${u(8)} 0 rgba(11,33,48,.22)`,
+        }}
+      >
+        {element.content ? element.content : placeholder}
+      </div>
+    );
+  }
+
+  const hasBackground = style.background && style.background !== "transparent";
   return (
     <div
       data-text-content
@@ -136,7 +175,7 @@ function TextContent({ element, editing }: { element: CanvasElement; editing: bo
         minHeight: u(fontSize * 1.12),
       }}
     >
-      {element.content ? element.content : editing ? <span style={{ opacity: 0.38 }}>Escribe aquí…</span> : null}
+      {element.content ? element.content : placeholder}
     </div>
   );
 }
@@ -151,6 +190,46 @@ export function ElementContent({ element, editing = false }: { element: CanvasEl
   );
 }
 
+type ElementNodeProps = {
+  element: CanvasElement;
+  zIndex: number;
+  editing?: boolean;
+  /** Zona del cuaderno que ocupa el contenedor (posiciones en %), o null para posiciones en unidades del cuaderno (px con `--mm-u: 1px`). */
+  frame: Rect | null;
+};
+
+/** Un elemento colocado en el cuaderno. Lo comparten las vistas (en %) y el editor (en unidades del cuaderno). */
+export const ElementNode = memo(function ElementNode({ element, zIndex, editing = false, frame }: ElementNodeProps) {
+  const outer = getOuterSize(element);
+  const isText = element.type === "text";
+  const place = frame
+    ? { left: pct((element.x - frame.x) / frame.width), top: pct((element.y - frame.y) / frame.height), width: pct(outer.width / frame.width), height: isText ? "auto" : pct(outer.height / frame.height) }
+    : { left: element.x, top: element.y, width: outer.width, height: isText ? "auto" : outer.height };
+  return (
+    <div
+      data-element-id={element.id}
+      data-element-type={element.type}
+      className="absolute"
+      style={{
+        ...place,
+        transform: `rotate(${element.rotation}deg) scale(${element.scale})`,
+        transformOrigin: "center center",
+        zIndex,
+        opacity: element.opacity ?? 1,
+      }}
+    >
+      <ElementContent element={element} editing={editing} />
+    </div>
+  );
+});
+
+/** Patrón del papel anclado al origen del cuaderno. `--mm-u` debe estar definido en un ancestro o en `style`. */
+export function PaperTexture({ composition, offset, style }: { composition: ScrapbookComposition; offset: { x: string; y: string }; style?: CSSProperties }) {
+  const texture = getTextureStyle(composition.canvas.texture, composition.canvas.background);
+  if (!texture) return null;
+  return <div aria-hidden="true" className="pointer-events-none absolute inset-0" style={{ ...texture, backgroundPosition: `${offset.x} ${offset.y}`, ...style }} />;
+}
+
 export type CompositionCanvasProps = {
   composition: ScrapbookComposition;
   className?: string;
@@ -159,18 +238,23 @@ export type CompositionCanvasProps = {
   mode?: "view" | "edit";
   label?: string;
   emptyState?: ReactNode;
+  /** Zona del cuaderno a mostrar. Por defecto, el encuadre de todo el contenido. */
+  bounds?: Rect;
   children?: ReactNode;
 };
 
+/**
+ * Vista estática de un cuaderno infinito: encuadra su contenido (o `bounds`)
+ * y lo escala al ancho disponible.
+ */
 const CompositionCanvas = forwardRef<HTMLDivElement, CompositionCanvasProps>(function CompositionCanvas(
-  { composition, className = "", style, mode = "view", label = "Composición del scrapbook", emptyState, children },
+  { composition, className = "", style, mode = "view", label = "Composición del scrapbook", emptyState, bounds, children },
   ref,
 ) {
   const { canvas } = composition;
   const editing = mode === "edit";
   const ordered = sortByZ(composition.elements).filter((element) => element.visible !== false);
-  const texture = getTextureStyle(canvas.texture, canvas.background);
-  const frame = getCanvasFrameStyle(canvas.frame, canvas.background);
+  const frame = bounds ?? getContentBounds(composition);
 
   return (
     <div
@@ -182,43 +266,21 @@ const CompositionCanvas = forwardRef<HTMLDivElement, CompositionCanvasProps>(fun
       className={`relative select-none overflow-hidden ${className}`}
       style={
         {
-          aspectRatio: `${canvas.width} / ${canvas.height}`,
+          aspectRatio: `${frame.width} / ${frame.height}`,
           containerType: "inline-size",
           background: canvas.background,
-          "--mm-u": `calc(100cqw / ${canvas.width})`,
+          "--mm-u": `calc(100cqw / ${frame.width})`,
           ...style,
         } as CSSProperties
       }
     >
       {canvas.backgroundImage ? <img src={canvas.backgroundImage} alt="" draggable={false} className="pointer-events-none absolute inset-0 h-full w-full object-cover" /> : null}
-      {texture ? <div aria-hidden="true" className="pointer-events-none absolute inset-0" style={texture} /> : null}
+      <PaperTexture composition={composition} offset={{ x: u(-frame.x), y: u(-frame.y) }} />
 
-      {ordered.map((element, index) => {
-        const outer = getOuterSize(element);
-        const isText = element.type === "text";
-        return (
-          <div
-            key={element.id}
-            data-element-id={element.id}
-            data-element-type={element.type}
-            className="absolute"
-            style={{
-              left: pct(element.x / canvas.width),
-              top: pct(element.y / canvas.height),
-              width: pct(outer.width / canvas.width),
-              height: isText ? "auto" : pct(outer.height / canvas.height),
-              transform: `rotate(${element.rotation}deg) scale(${element.scale})`,
-              transformOrigin: "center center",
-              zIndex: index + 1,
-              opacity: element.opacity ?? 1,
-            }}
-          >
-            <ElementContent element={element} editing={editing} />
-          </div>
-        );
-      })}
+      {ordered.map((element, index) => (
+        <ElementNode key={element.id} element={element} zIndex={index + 1} editing={editing} frame={frame} />
+      ))}
 
-      {frame ? <div aria-hidden="true" className="pointer-events-none absolute" style={{ ...frame, zIndex: ordered.length + 2 }} /> : null}
       {ordered.length === 0 && emptyState ? <div className="absolute inset-0 z-[1] flex items-center justify-center p-4">{emptyState}</div> : null}
       {children}
     </div>

@@ -3,19 +3,20 @@ import { addElement, createEmptyComposition, createTextElement } from "./composi
 import { snapPosition, snapRotation } from "./editor-snap";
 
 describe("guías de alineación", () => {
-  it("ajusta al centro del lienzo cuando el elemento queda cerca", () => {
+  it("ajusta al centro de otro elemento cuando queda cerca", () => {
     const composition = createEmptyComposition();
+    const anchor = { ...createTextElement(composition, { content: "ancla", width: 200 }), x: 500, y: 600, height: 80 };
     const element = { ...createTextElement(composition, { content: "hola", width: 200 }), height: 80 };
-    const result = snapPosition(addElement(composition, element), element, { x: 503, y: 100 }, 8);
+    const result = snapPosition(addElement(addElement(composition, anchor), element), element, { x: 503, y: 100 }, 8);
     expect(result.x).toBe(500);
-    expect(result.guides.vertical).toEqual([600]);
+    expect(result.guides.vertical).toEqual([500]);
   });
 
-  it("no mueve el elemento si ninguna guía está cerca", () => {
+  it("no hay bordes de página: un elemento solo no se imanta a nada", () => {
     const composition = createEmptyComposition();
     const element = { ...createTextElement(composition, { content: "hola", width: 200 }), height: 80 };
-    const result = snapPosition(composition, element, { x: 333, y: 222 }, 4);
-    expect(result).toEqual({ x: 333, y: 222, guides: { vertical: [], horizontal: [] } });
+    const result = snapPosition(addElement(composition, element), element, { x: 502, y: -3 }, 8);
+    expect(result).toEqual({ x: 502, y: -3, guides: { vertical: [], horizontal: [] } });
   });
 
   it("imanta la rotación a múltiplos de 45°", () => {

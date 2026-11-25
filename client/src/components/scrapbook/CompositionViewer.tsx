@@ -1,13 +1,13 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { MapPin, Minus, Plus, RotateCcw, X } from "lucide-react";
-import type { ScrapbookComposition } from "@/lib/composition";
+import { getContentBounds, type ScrapbookComposition } from "@/lib/composition";
 import { useImmersiveMode } from "@/lib/immersive";
 import { useElementSize } from "@/hooks/useElementSize";
 import { usePanZoom } from "@/hooks/usePanZoom";
 import CompositionCanvas from "./CompositionCanvas";
 
-export const VIEWER_ZOOM_LIMITS = { min: 0.5, max: 3 } as const;
+export const VIEWER_ZOOM_LIMITS = { min: 0.5, max: 4 } as const;
 
 type Props = {
   open: boolean;
@@ -20,7 +20,9 @@ type Props = {
 function ViewerStage({ composition, title }: { composition: ScrapbookComposition; title: string }) {
   const areaRef = useRef<HTMLDivElement>(null);
   const area = useElementSize(areaRef);
-  const aspect = composition.canvas.width / composition.canvas.height;
+  // El cuaderno es infinito: se muestra el encuadre de todo su contenido.
+  const bounds = useMemo(() => getContentBounds(composition), [composition]);
+  const aspect = bounds.width / bounds.height;
   const padding = area.width < 640 ? 20 : 56;
   const fitWidth = Math.max(0, Math.min(area.width - padding, (area.height - padding) * aspect));
   const content = { width: fitWidth, height: fitWidth / aspect };
@@ -49,6 +51,7 @@ function ViewerStage({ composition, title }: { composition: ScrapbookComposition
         >
             <CompositionCanvas
               composition={composition}
+              bounds={bounds}
               label={`Composición completa de ${title}`}
               className="rounded-[1.1rem] border-2 border-cream/40 shadow-[10px_10px_0_rgba(250,146,35,.35)]"
               emptyState={<p className="rounded-full border-2 border-ink bg-cream px-4 py-2 text-sm font-black text-ink">Este scrapbook aún está en blanco.</p>}

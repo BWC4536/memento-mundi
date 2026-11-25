@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { ArrowLeft, CalendarDays, Camera, Clock3, Edit3, Layers3, Maximize2, MapPin, Users } from "lucide-react";
-import type { ScrapbookComposition } from "@/lib/composition";
+import { getContentBounds, type ScrapbookComposition } from "@/lib/composition";
 import { formatDate, relativeDate } from "@/lib/scrapbook-library";
 import type { Scrapbook } from "@/lib/scrapbooks";
 import CompositionCanvas from "@/components/scrapbook/CompositionCanvas";
@@ -29,6 +29,7 @@ function Chip({ children, accent = false }: { children: React.ReactNode; accent?
 export default function ScrapbookPhotoView({ scrapbook, composition, onBack, onEdit, initialFullscreen = false }: Props) {
   const [fullscreen, setFullscreen] = useState(initialFullscreen);
   const elementCount = composition.elements.length;
+  const bounds = useMemo(() => getContentBounds(composition), [composition]);
 
   return (
     <main className="min-h-screen overflow-x-hidden bg-cream pb-36">
@@ -64,7 +65,7 @@ export default function ScrapbookPhotoView({ scrapbook, composition, onBack, onE
           transition={{ duration: 0.25 }}
           className="relative mx-auto mt-5 w-full rounded-[1.75rem] border-2 border-ink bg-[#D8E2DC] p-2.5 shadow-hard sm:p-3"
           // La composición entera cabe en pantalla (también en formatos verticales).
-          style={{ maxWidth: `max(18rem, calc((100dvh - 15rem) * ${composition.canvas.width / composition.canvas.height}))` }}
+          style={{ maxWidth: `max(18rem, calc((100dvh - 15rem) * ${bounds.width / bounds.height}))` }}
         >
           <div
             role="button"
@@ -81,12 +82,13 @@ export default function ScrapbookPhotoView({ scrapbook, composition, onBack, onE
           >
             <CompositionCanvas
               composition={composition}
+              bounds={bounds}
               label={`Previsualización de ${scrapbook.title}`}
               className="rounded-[1.2rem] border-2 border-ink"
               emptyState={
                 <div className="max-w-xs rounded-2xl border-2 border-ink bg-cream p-4 text-center shadow-hard-sm"><div className="hidden sm:block"><Mascot name="12-scrapbook-album" size="sm" className="mx-auto" /></div>
                   <p className="font-display text-2xl">Página en blanco</p>
-                  <p className="mt-1 text-sm font-semibold text-ink/65">Pulsa Editar para añadir fotos, texto y decoración.</p>
+                  <p className="mt-1 text-sm font-semibold text-ink/65">Pulsa Editar para añadir fotos, notas y decoración.</p>
                 </div>
               }
             />

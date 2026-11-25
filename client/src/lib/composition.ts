@@ -6,7 +6,12 @@
  * funciones puras que devuelven una composición nueva, para que el editor pueda
  * deshacer/rehacer y para poder testearlas sin navegador.
  *
- * Coordenadas: unidades lógicas del lienzo (canvas.width × canvas.height).
+ * El lienzo es un cuaderno infinito: los elementos pueden estar en cualquier
+ * coordenada (también negativa). `canvas.width × canvas.height` ya no es un
+ * borde, solo la zona de referencia donde empieza un cuaderno vacío y la
+ * escala de los tamaños por defecto. Las vistas previas encuadran el
+ * contenido real con `getContentBounds`.
+ *
  * `x`/`y` son la esquina superior izquierda de la caja exterior del elemento
  * (incluido su marco). `width`/`height` son el tamaño de la ventana de foto (o
  * de la caja del elemento si no tiene marco). La escala y la rotación se
@@ -40,6 +45,8 @@ export type TextStyle = {
   /** Fondo tipo etiqueta detrás del texto. "transparent" = sin fondo. */
   background?: string;
   italic?: boolean;
+  /** "note": nota breve con aspecto de papel adhesivo (usa `background` como color del papel). */
+  variant?: "note";
 };
 
 /** Ajuste de la foto dentro de su marco. offsetX/offsetY van de -1 a 1. */
@@ -117,7 +124,8 @@ export type ScrapbookComposition = {
 /* ------------------------------------------------------------------------- */
 
 export const LIMITS = {
-  canvasZoom: { min: 0.5, max: 2.5 },
+  /** Zoom de la cámara del cuaderno infinito. */
+  canvasZoom: { min: 0.1, max: 4 },
   elementScale: { min: 0.25, max: 3 },
   rotation: { min: -180, max: 180 },
   fontSize: { min: 12, max: 240 },
@@ -235,6 +243,71 @@ export function getCenter(element: CanvasElement) {
   return { x: element.x + outer.width / 2, y: element.y + outer.height / 2 };
 }
 
+export type Rect = { x: number; y: number; width: number; height: number };
+
+/**
+ * Caja que ocupa el elemento en el mundo, con escala y rotación aplicadas.
+ * `heightOverride` permite usar el alto real medido de un texto.
+ */
+export function getElementBounds(element: CanvasElement, heightOverride?: number): Rect {
+  const outer = getOuterSize(element);
+  const height = heightOverride ?? outer.height;
+  const cx = element.x + outer.width / 2;
+  const cy = element.y + height / 2;
+  const w = outer.width * element.scale;
+  const h = height * element.scale;
+  const radians = (element.rotation * Math.PI) / 180;
+  const cos = Math.abs(Math.cos(radians));
+  const sin = Math.abs(Math.sin(radians));
+  const bw = w * cos + h * sin;
+  const bh = w * sin + h * cos;
+  return { x: cx - bw / 2, y: cy - bh / 2, width: bw, height: bh };
+}
+
+export type ContentBoundsOptions = {
+  /** Margen alrededor del contenido, en fracción del lado largo (por defecto 6%). */
+  padding?: number;
+  /** Proporción máxima ancho/alto (y alto/ancho): evita tiras finísimas en las vistas previas. */
+  maxAspect?: number;
+};
+
+/**
+ * Encuadre del contenido de un cuaderno infinito: la unión de todos los
+ * elementos visibles más un margen. Sin elementos, la zona de referencia.
+ */
+export function getContentBounds(composition: ScrapbookComposition, { padding = 0.06, maxAspect = 2.4 }: ContentBoundsOptions = {}): Rect {
+  const visible = composition.elements.filter((element) => element.visible !== false);
+  if (visible.length === 0) return { x: 0, y: 0, width: composition.canvas.width, height: composition.canvas.height };
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const element of visible) {
+    const box = getElementBounds(element);
+    minX = Math.min(minX, box.x);
+    minY = Math.min(minY, box.y);
+    maxX = Math.max(maxX, box.x + box.width);
+    maxY = Math.max(maxY, box.y + box.height);
+  }
+  let width = Math.max(1, maxX - minX);
+  let height = Math.max(1, maxY - minY);
+  const margin = Math.max(40, Math.max(width, height) * padding);
+  let x = minX - margin;
+  let y = minY - margin;
+  width += margin * 2;
+  height += margin * 2;
+  if (width / height > maxAspect) {
+    const next = width / maxAspect;
+    y -= (next - height) / 2;
+    height = next;
+  } else if (height / width > maxAspect) {
+    const next = height / maxAspect;
+    x -= (next - width) / 2;
+    width = next;
+  }
+  return { x: round(x, 2), y: round(y, 2), width: round(width, 2), height: round(height, 2) };
+}
+
 /** Ajusta la caja (ancho/alto) a la proporción de la foto conservando el lado largo. */
 export function fitSizeToAspect(longSide: number, aspect: number) {
   const safeAspect = Number.isFinite(aspect) && aspect > 0 ? aspect : 4 / 3;
@@ -282,7 +355,7 @@ export function getFontCss(fontFamily: string | undefined) {
   return FONT_FAMILIES.find((font) => font.id === fontFamily)?.css ?? fontFamily ?? FONT_FAMILIES[0].css;
 }
 
-export const DEFAULT_TEXT_STYLE: Required<Omit<TextStyle, "italic">> & { italic: boolean } = {
+export const DEFAULT_TEXT_STYLE: Required<Omit<TextStyle, "italic" | "variant">> & { italic: boolean } = {
   fontFamily: "brand",
   fontSize: 64,
   fontWeight: 400,
@@ -296,10 +369,34 @@ export const DEFAULT_TEXT_STYLE: Required<Omit<TextStyle, "italic">> & { italic:
 export function estimateTextHeight(content: string, style: TextStyle | undefined, width: number) {
   const fontSize = style?.fontSize ?? DEFAULT_TEXT_STYLE.fontSize;
   const charsPerLine = Math.max(4, Math.floor(width / (fontSize * 0.52)));
+  if (style?.variant === "note") {
+    const inner = Math.max(4, Math.floor((width - fontSize * NOTE_PADDING_X * 2) / (fontSize * 0.5)));
+    const noteLines = (content || " ").split("\n").reduce((total, line) => total + Math.max(1, Math.ceil(line.length / inner)), 0);
+    return round(Math.max(width * NOTE_MIN_ASPECT, noteLines * fontSize * 1.2 + fontSize * NOTE_PADDING_Y * 2), 2);
+  }
   const lines = (content || " ").split("\n").reduce((total, line) => total + Math.max(1, Math.ceil(line.length / charsPerLine)), 0);
   const padding = style?.background && style.background !== "transparent" ? fontSize * 0.6 : 0;
   return round(lines * fontSize * 1.15 + padding, 2);
 }
+
+/* ------------------------------------------------------------------------- */
+/* Notas breves                                                               */
+/* ------------------------------------------------------------------------- */
+
+/** Proporciones de la nota (en múltiplos del tamaño de letra y del ancho). */
+export const NOTE_PADDING_X = 0.6;
+export const NOTE_PADDING_Y = 0.55;
+export const NOTE_MIN_ASPECT = 0.62;
+
+export const NOTE_COLORS = [
+  { id: "amarillo", label: "Amarillo", value: "#FBE7A1" },
+  { id: "arena", label: "Arena", value: "#F2C5A0" },
+  { id: "verde", label: "Verde", value: "#D8E2DC" },
+  { id: "cielo", label: "Cielo", value: "#C9D9E3" },
+  { id: "papel", label: "Papel", value: "#FFFDF6" },
+] as const;
+
+export const isNote = (element: CanvasElement | undefined) => element?.type === "text" && element.textStyle?.variant === "note";
 
 /* ------------------------------------------------------------------------- */
 /* Fábricas                                                                    */
@@ -371,6 +468,38 @@ export function createTextElement(composition: ScrapbookComposition, init: TextI
   return centeredAt(element, init.center ?? canvasCenter(composition));
 }
 
+export type NoteInit = { content?: string; center?: Point; color?: string; rotation?: number };
+
+/** Nota breve: un texto manuscrito sobre un papel de color, ligeramente torcido. */
+export function createNoteElement(composition: ScrapbookComposition, init: NoteInit = {}): CanvasElement {
+  const textStyle: TextStyle = {
+    ...DEFAULT_TEXT_STYLE,
+    fontFamily: "hand",
+    fontSize: 40,
+    align: "left",
+    color: "#0B2130",
+    background: init.color ?? NOTE_COLORS[0].value,
+    variant: "note",
+  };
+  const width = 340;
+  const content = init.content ?? "";
+  const element: CanvasElement = {
+    id: createElementId("note"),
+    type: "text",
+    x: 0,
+    y: 0,
+    width,
+    height: estimateTextHeight(content, textStyle, width),
+    rotation: init.rotation ?? (composition.elements.length % 2 ? 2 : -2),
+    scale: 1,
+    z: maxZ(composition.elements) + 1,
+    visible: true,
+    content,
+    textStyle,
+  };
+  return centeredAt(element, init.center ?? canvasCenter(composition));
+}
+
 export type PhotoInit = {
   src: string;
   naturalWidth?: number;
@@ -379,6 +508,8 @@ export type PhotoInit = {
   frameId?: FrameId;
   asset?: AssetRef;
   rotation?: number;
+  /** Lado largo de la foto (por defecto la mitad del lado corto de la zona de referencia). */
+  longSide?: number;
 };
 
 export function defaultPhotoLongSide(composition: ScrapbookComposition) {
@@ -387,7 +518,7 @@ export function defaultPhotoLongSide(composition: ScrapbookComposition) {
 
 export function createPhotoElement(composition: ScrapbookComposition, init: PhotoInit): CanvasElement {
   const aspect = init.naturalWidth && init.naturalHeight ? init.naturalWidth / init.naturalHeight : 4 / 3;
-  const size = fitSizeToAspect(defaultPhotoLongSide(composition), aspect);
+  const size = fitSizeToAspect(init.longSide ?? defaultPhotoLongSide(composition), aspect);
   const element: CanvasElement = {
     id: createElementId("photo"),
     type: "photo",
@@ -655,56 +786,47 @@ export function updateCanvas(composition: ScrapbookComposition, patch: Partial<C
   return { ...composition, canvas };
 }
 
-/** Cambia el formato del lienzo recolocando los elementos proporcionalmente (sin deformarlos). */
-export function resizeCanvas(composition: ScrapbookComposition, width: number, height: number, formatId?: string): ScrapbookComposition {
-  const resized = updateCanvas(composition, { width, height, formatId });
-  const sx = resized.canvas.width / composition.canvas.width;
-  const sy = resized.canvas.height / composition.canvas.height;
-  return {
-    ...resized,
-    elements: composition.elements.map((element) => {
-      const center = getCenter(element);
-      const outer = getOuterSize(element);
-      return { ...element, x: round(center.x * sx - outer.width / 2, 2), y: round(center.y * sy - outer.height / 2, 2) };
-    }),
-  };
-}
-
-/** Recoloca las fotos según un estilo de composición. */
-export function arrangePhotos(composition: ScrapbookComposition, style: "grid" | "collage" | "straighten"): ScrapbookComposition {
+/**
+ * Recoloca las fotos según un estilo de composición. En el cuaderno infinito
+ * no hay bordes: las fotos se ordenan alrededor del centro del grupo actual
+ * (o de `center`) y conservan su tamaño.
+ */
+export function arrangePhotos(composition: ScrapbookComposition, style: "grid" | "collage" | "straighten", center?: Point): ScrapbookComposition {
   const photos = sortByZ(composition.elements).filter((element) => element.type === "photo" || element.type === "frame");
   if (photos.length === 0) return composition;
-  const { width: W, height: H } = composition.canvas;
   const positions = new Map<string, Partial<CanvasElement>>();
+  const anchor =
+    center ??
+    (() => {
+      const centers = photos.map(getCenter);
+      return { x: centers.reduce((sum, point) => sum + point.x, 0) / centers.length, y: centers.reduce((sum, point) => sum + point.y, 0) / centers.length };
+    })();
+  // Celda común: la foto más grande (con su escala) más un respiro.
+  const cell = photos.reduce((max, photo) => {
+    const outer = getOuterSize(photo);
+    return Math.max(max, outer.width * photo.scale, outer.height * photo.scale);
+  }, 0) * 1.12;
+  const place = (photo: CanvasElement, cx: number, cy: number, extra: Partial<CanvasElement>) => {
+    const outer = getOuterSize(photo);
+    positions.set(photo.id, { x: cx - outer.width / 2, y: cy - outer.height / 2, ...extra });
+  };
 
   if (style === "straighten") {
     photos.forEach((photo) => positions.set(photo.id, { rotation: 0 }));
   } else if (style === "grid") {
     const cols = Math.ceil(Math.sqrt(photos.length));
     const rows = Math.ceil(photos.length / cols);
-    const margin = Math.min(W, H) * 0.07;
-    const cellW = (W - margin * 2) / cols;
-    const cellH = (H - margin * 2) / rows;
     photos.forEach((photo, index) => {
       const col = index % cols;
       const row = Math.floor(index / cols);
-      const outer = getOuterSize(photo);
-      const fit = Math.min((cellW * 0.86) / outer.width, (cellH * 0.86) / outer.height);
-      const scale = clampElementScale(fit);
-      const cx = margin + cellW * (col + 0.5);
-      const cy = margin + cellH * (row + 0.5);
-      positions.set(photo.id, { x: cx - outer.width / 2, y: cy - outer.height / 2, scale, rotation: 0 });
+      place(photo, anchor.x + (col - (cols - 1) / 2) * cell, anchor.y + (row - (rows - 1) / 2) * cell, { rotation: 0 });
     });
   } else {
     const tilts = [-6, 4, -3, 7, -5, 3];
+    const radius = photos.length === 1 ? 0 : cell * 0.42 * Math.sqrt(photos.length);
     photos.forEach((photo, index) => {
-      const outer = getOuterSize(photo);
       const angle = (index / photos.length) * Math.PI * 2 - Math.PI / 2;
-      const radius = photos.length === 1 ? 0 : Math.min(W, H) * 0.22;
-      const cx = W / 2 + Math.cos(angle) * radius * (W / H);
-      const cy = H / 2 + Math.sin(angle) * radius;
-      const scale = clampElementScale(Math.min(1, (Math.min(W, H) * 0.55) / Math.max(outer.width, outer.height)));
-      positions.set(photo.id, { x: cx - outer.width / 2, y: cy - outer.height / 2, rotation: tilts[index % tilts.length], scale });
+      place(photo, anchor.x + Math.cos(angle) * radius * 1.3, anchor.y + Math.sin(angle) * radius, { rotation: tilts[index % tilts.length] });
     });
   }
 
@@ -724,7 +846,7 @@ export type ScrapbookSeed = { id: string; title: string; location: string; cover
 export function createEmptyComposition(now = new Date()): ScrapbookComposition {
   return {
     version: 1,
-    canvas: { width: 1200, height: 900, background: "#EAE7DA", texture: "paper", frame: "none", zoom: 1, formatId: "horizontal" },
+    canvas: { width: 1200, height: 900, background: "#EAE7DA", texture: "dots", frame: "none", zoom: 1 },
     elements: [],
     updatedAt: now.toISOString(),
   };
@@ -870,6 +992,7 @@ function sanitizeElement(raw: unknown): CanvasElement | null {
       align: style.align === "left" || style.align === "right" || style.align === "center" ? style.align : undefined,
       background: str(style.background),
       italic: typeof style.italic === "boolean" ? style.italic : undefined,
+      variant: style.variant === "note" ? "note" : undefined,
     });
   }
   const color = str(raw.color);

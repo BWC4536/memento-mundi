@@ -1,37 +1,58 @@
-# Editor visual de scrapbooks
+# Editor visual de scrapbooks: cuaderno infinito
 
 ## Flujo
 
 ```
 Home (tarjetas con la portada como miniatura)
-  → seleccionar scrapbook            (Home guarda el id, no una copia)
-  → vista previa                     ScrapbookPhotoView: composición completa + Editar / Ver
-  → Editar                           InfiniteCanvasEditor({ scrapbook, initialComposition, onSave, onClose })
-  → Guardar cambios                  onSave(composition) → Home actualiza el scrapbook + localStorage
-  → X                                cerrar (si hay cambios sin guardar pide confirmación)
-  → vista previa y Ver               leen la misma composición del estado de Home
+  → seleccionar scrapbook            /?scrapbook=<id> · vista previa con Editar / Ver
+  → Editar                           /scrapbooks/<id> → ScrapbookEditorPage → InfiniteCanvasEditor
+  → Guardar                          onSave(composition) → Supabase (o localStorage en modo local)
+  → X                                vuelve a /?scrapbook=<id> (si hay cambios sin guardar pide confirmación)
 ```
 
-La composición vive en el estado compartido de Home (`Scrapbook.composition`), nunca solo dentro del editor.
-Editor, vista previa y pantalla completa usan el mismo renderizador (`CompositionCanvas`), así que muestran exactamente lo mismo.
+Editor, vista previa y pantalla completa pintan cada elemento con el mismo componente (`ElementNode`), así que muestran exactamente lo mismo.
+
+## Cuaderno infinito
+
+- **Sin bordes.** Los elementos pueden estar en cualquier coordenada, también negativa. `canvas.width × canvas.height` (1200 × 900) ya no es un borde: es la zona donde arranca un cuaderno vacío y la escala de los tamaños por defecto. Las columnas `width`/`height` de `scrapbook_pages` se siguen rellenando con ese valor.
+- **Cámara** (`client/src/lib/camera.ts`): `pantalla = mundo × zoom + (x, y)`. Zoom de 10 % a 400 %. Al abrir se encuadra todo el contenido; la cámara no se guarda.
+- **Vistas previas:** `getContentBounds` encuadra todos los elementos visibles con margen y limita la proporción a 2,4:1 para que una fila muy larga no quede como una tira.
+- **Papel:** color + patrón (puntos, cuadrícula, rayas, papel, kraft), anclado al origen del cuaderno para que se vea igual al moverse. Al alejar mucho, el patrón agrupa celdas para no convertirse en ruido. Ya no hay formatos de página ni "marco general"; el valor `frame` antiguo se conserva en los datos pero no se pinta.
+- **Notas breves:** texto con `textStyle.variant = "note"` (papel de color, letra manuscrita, ligeramente torcido). Se guarda en `style_json`, sin migración.
+
+### Gestos
+
+| Acción | Táctil | Escritorio |
+| --- | --- | --- |
+| Moverse | arrastrar el papel, o dos dedos | arrastrar el papel, rueda/trackpad, Espacio + arrastrar, botón central |
+| Zoom | pellizcar | Ctrl/⌘ + rueda, pinch del trackpad, `+` / `−` |
+| Ver todo | botón ⤢ | botón ⤢ o `0` |
+| Nota nueva | doble toque en el papel, botón Nota | doble clic en el papel, botón Nota o `N` |
+| Mover / girar / escalar | arrastrar, asas, pellizcar sobre el elemento | arrastrar, asas, flechas |
+
+### NFC / QR
+
+El hardware NFC/QR es del viaje, no de una foto: la pegatina física abre el scrapbook (escáner de Home y tienda). El editor no tiene ningún elemento NFC.
 
 ## Archivos
 
 | Archivo | Responsabilidad |
 | --- | --- |
-| `client/src/lib/composition.ts` | Modelo (`ScrapbookComposition`, `CanvasElement`, `PhotoFilter`), límites y operaciones puras (texto, fotos, marcos, filtros, capas, validación). |
-| `client/src/lib/composition-presets.ts` | Formatos de lienzo, fondos, texturas, marcos generales y presets visuales. |
+| `client/src/lib/composition.ts` | Modelo (`ScrapbookComposition`, `CanvasElement`, `PhotoFilter`), límites, encuadre del contenido y operaciones puras (texto, notas, fotos, marcos, filtros, capas, validación). |
+| `client/src/lib/camera.ts` | Cámara del cuaderno infinito: pantalla ↔ mundo, zoom anclado, encuadre. |
+| `client/src/lib/composition-presets.ts` | Colores y patrones del papel, presets y marcos de foto. |
 | `client/src/lib/editor-history.ts` | Reducer del editor con deshacer/rehacer. |
 | `client/src/lib/editor-snap.ts` | Guías de alineación e imán de rotación. |
 | `client/src/lib/composition-storage.ts` | Guardado temporal en localStorage. |
 | `client/src/lib/scrapbook-library.ts` | Estado compartido de scrapbooks: hidratar, aplicar y persistir composiciones. |
 | `client/src/lib/image-upload.ts` | Validación de formatos, conversión HEIC/HEIF y compresión en cliente. |
 | `client/src/lib/supabase-composition.ts` | Mapeo composición ↔ filas de Supabase (preparado, no conectado). |
-| `client/src/components/scrapbook/CompositionCanvas.tsx` | Renderizador único. |
+| `client/src/components/scrapbook/CompositionCanvas.tsx` | Renderizador único (`ElementNode`, `PaperTexture`) y vista estática encuadrada. |
 | `client/src/components/scrapbook/CompositionViewer.tsx` | Vista "Ver" a pantalla completa con arrastre y zoom. |
 | `client/src/components/scrapbook/decorations.tsx` | Catálogo SVG del panel Elementos. |
-| `client/src/components/editor/EditorStage.tsx` | Lienzo interactivo: selección, mover, escalar, rotar, pinch, pan, guías. |
-| `client/src/components/editor/EditorPanels.tsx` | Paneles Diseño, Elementos, Fotos, Texto, Filtros, Capas y Ajustes. |
+| `client/src/components/editor/EditorStage.tsx` | Cuaderno interactivo: cámara, selección, mover, escalar, rotar, pinch, guías, doble toque = nota. |
+| `client/src/components/editor/EditorPanels.tsx` | Paneles Fotos, Texto (notas y títulos), Decorar, Capas, Papel, Filtros y Ajustes. |
+| `client/src/pages/ScrapbookEditorPage.tsx` | Ruta `/scrapbooks/:id`: carga el scrapbook y abre el editor. |
 | `docs/supabase/002_scrapbook_editor.sql` | Migración aditiva con tablas, columnas, RLS y Storage. |
 
 ## Fotos HEIC/HEIF
@@ -75,7 +96,8 @@ Migraciones aplicadas el 18 nov 2026: `002_scrapbook_editor.sql` y `003_harden_f
 
 ### Limitaciones conocidas
 
-- Una página por scrapbook (la tabla admite varias; la interfaz edita la primera).
+- Un cuaderno por scrapbook (la tabla de páginas admite varias; la interfaz edita la primera).
+- En modo local (sin Supabase), si localStorage está lleno al guardar, los cambios solo viven en memoria y se pierden al salir del editor.
 - Edición simultánea: gana el último en guardar; no hay tiempo real.
 - Al guardar, `created_by` de cada elemento pasa a ser quien guarda.
 - Los scrapbooks creados antes en modo local (navegador) no se migran solos a la nube.

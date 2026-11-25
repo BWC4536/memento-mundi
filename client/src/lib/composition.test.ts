@@ -32,7 +32,7 @@ import {
   updateText,
   PHOTO_FILTERS,
 } from "./composition";
-import { applyCanvasFormat, applyDesignPreset, setCanvasBackground } from "./composition-presets";
+import { applyDesignPreset, setCanvasBackground } from "./composition-presets";
 
 const base = () => createEmptyComposition(new Date("2026-11-18T10:00:00.000Z"));
 
@@ -160,11 +160,11 @@ describe("filtros", () => {
 });
 
 describe("límites de zoom, rotación y escala", () => {
-  it("limita el zoom del lienzo entre 0.5 y 2.5", () => {
-    expect(clampCanvasZoom(0.1)).toBe(0.5);
-    expect(clampCanvasZoom(9)).toBe(2.5);
+  it("limita el zoom del lienzo de la cámara entre 0.1 y 4", () => {
+    expect(clampCanvasZoom(0.01)).toBe(0.1);
+    expect(clampCanvasZoom(9)).toBe(4);
     expect(clampCanvasZoom(1.25)).toBe(1.25);
-    expect(clampCanvasZoom(Number.NaN)).toBe(0.5);
+    expect(clampCanvasZoom(Number.NaN)).toBe(0.1);
   });
 
   it("limita la escala entre 0.25 y 3 y la rotación entre -180 y 180", () => {
@@ -219,19 +219,17 @@ describe("capas", () => {
 });
 
 describe("diseño", () => {
-  it("cambia fondo, textura, marco general y formato del lienzo", () => {
+  it("cambia el papel (color y patrón) sin marco de página", () => {
     const text = createTextElement(base(), { content: "hola", center: { x: 600, y: 450 } });
     const composition = addElement(base(), text);
     const night = applyDesignPreset(composition, "nocturno");
     expect(night.canvas.background).toBe("#0B2130");
     expect(night.canvas.texture).toBe("dots");
-    expect(night.canvas.frame).toBe("thin");
+    expect(night.canvas.frame).toBe("none");
     expect(findElement(night, text.id)?.textStyle?.color).toBe("#EAE7DA");
     expect(setCanvasBackground(night, "#EAE7DA").elements[0].textStyle?.color).toBe("#0B2130");
-    const story = applyCanvasFormat(composition, "historia");
-    expect([story.canvas.width, story.canvas.height]).toEqual([1080, 1920]);
-    const moved = findElement(story, text.id)!;
-    expect(moved.x + moved.width / 2).toBeCloseTo(540);
+    // Cambiar el papel nunca mueve los elementos.
+    expect(findElement(night, text.id)).toMatchObject({ x: text.x, y: text.y });
   });
 
   it("la composición inicial usa la portada como una foto más, con título y ubicación", () => {

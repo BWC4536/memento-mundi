@@ -10,6 +10,7 @@ import LoginDialog from "./components/LoginDialog";
 import NavigationDock from "./components/NavigationDock";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
+import ScrapbookEditorPage from "./pages/ScrapbookEditorPage";
 import StorePage from "./pages/StorePage";
 
 function Router() {
@@ -17,6 +18,7 @@ function Router() {
     <Switch>
       <Route path="/" component={Home} />
       <Route path="/store" component={StorePage} />
+      <Route path="/scrapbooks/:id">{(params) => <ScrapbookEditorPage id={params.id} />}</Route>
       <Route path="/explore"><SectionPage section="Explorar" /></Route>
       <Route path="/profile"><SectionPage section="Perfil" /></Route>
       <Route path="/404" component={NotFound} />
