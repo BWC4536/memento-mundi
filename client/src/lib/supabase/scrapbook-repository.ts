@@ -147,15 +147,6 @@ export function createScrapbookRepository({ client, getAccessToken, getUserId, t
     return withCovers(rows.filter((row) => !userId || row.owner_id === userId || memberOf.has(row.id)));
   }
 
-  /** Scrapbooks públicos con ubicación (de cualquier usuario): las chinchetas del mapa de Explorar. */
-  async function listPublicScrapbooks(): Promise<Scrapbook[]> {
-    const rows = await client.request<ScrapbookRow[]>(
-      `/rest/v1/scrapbooks?select=${SCRAPBOOK_SELECT}&is_public=eq.true&latitude=not.is.null&longitude=not.is.null&order=updated_at.desc&limit=200`,
-      { accessToken: await token() },
-    );
-    return withCovers(rows);
-  }
-
   /** Público ↔ privado. Solo el propietario puede cambiarlo (RLS). */
   async function setScrapbookVisibility(id: string, isPublic: boolean) {
     const rows = await client.request<Array<{ id: string; is_public: boolean }>>(`/rest/v1/scrapbooks?id=eq.${encodeURIComponent(id)}&select=id,is_public`, {
@@ -287,7 +278,7 @@ export function createScrapbookRepository({ client, getAccessToken, getUserId, t
     return resolveMedia({ ...uploaded, pageId });
   }
 
-  return { listScrapbooks, listPublicScrapbooks, setScrapbookVisibility, createScrapbook, deleteScrapbook, loadComposition, saveComposition, signPaths };
+  return { listScrapbooks, setScrapbookVisibility, createScrapbook, deleteScrapbook, loadComposition, saveComposition, signPaths };
 }
 
 export type ScrapbookRepository = ReturnType<typeof createScrapbookRepository>;

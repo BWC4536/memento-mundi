@@ -1,7 +1,6 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
-import SectionPage from "@/pages/SectionPage";
 import { MotionConfig } from "framer-motion";
 import { useEffect } from "react";
 import { Redirect, Route, Switch } from "wouter";
@@ -13,6 +12,7 @@ import NavigationDock from "./components/NavigationDock";
 import { ScrapbookLibraryProvider } from "./contexts/ScrapbookLibraryContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { useAppPreferences } from "./lib/app-preferences";
+import ExplorePage from "./pages/ExplorePage";
 import Home from "./pages/Home";
 import LegalPage from "./pages/LegalPage";
 import ProfilePage from "./pages/ProfilePage";
@@ -25,7 +25,7 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/store" component={StorePage} />
       <Route path="/scrapbooks/:id">{(params) => <ScrapbookEditorPage id={params.id} />}</Route>
-      <Route path="/explore"><SectionPage section="Explorar" /></Route>
+      <Route path="/explore/:kind?/:id?">{(params) => <ExplorePage kind={params.kind} id={params.id} />}</Route>
       <Route path="/perfil" component={ProfilePage} />
       <Route path="/profile"><Redirect to="/perfil" replace /></Route>
       <Route path="/privacidad"><LegalPage slug="privacidad" /></Route>

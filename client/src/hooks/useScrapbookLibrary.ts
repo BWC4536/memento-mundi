@@ -134,9 +134,6 @@ export function useScrapbookLibrary(user: AppUser | null, provider: "supabase" |
     [repository],
   );
 
-  /** Scrapbooks públicos de cualquier usuario con ubicación (mapa de Explorar). Sin Supabase no hay ninguno ajeno. */
-  const listPublicScrapbooks = useCallback(async (): Promise<Scrapbook[]> => (repository ? repository.listPublicScrapbooks() : []), [repository]);
-
   /** Guardar del editor: actualiza el scrapbook en el estado compartido, en Supabase y en la copia local. */
   const saveComposition = useCallback(
     async (id: string, composition: ScrapbookComposition): Promise<SaveResult> => {
@@ -159,5 +156,5 @@ export function useScrapbookLibrary(user: AppUser | null, provider: "supabase" |
     [repository],
   );
 
-  return { mode, scrapbooks, loading, error, reload, ensureComposition, compositionStatus, createScrapbook, deleteScrapbook, setScrapbookVisibility, listPublicScrapbooks, saveComposition };
+  return { mode, scrapbooks, loading, error, reload, ensureComposition, compositionStatus, createScrapbook, deleteScrapbook, setScrapbookVisibility, saveComposition };
 }
