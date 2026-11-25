@@ -8,6 +8,7 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import BrandCorner from "./components/BrandCorner";
 import LoginDialog from "./components/LoginDialog";
 import NavigationDock from "./components/NavigationDock";
+import { ScrapbookLibraryProvider } from "./contexts/ScrapbookLibraryContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
 import ScrapbookEditorPage from "./pages/ScrapbookEditorPage";
@@ -36,7 +37,9 @@ export default function App() {
         <TooltipProvider>
           <Toaster />
           <BrandCorner />
-          <Router />
+          <ScrapbookLibraryProvider>
+            <Router />
+          </ScrapbookLibraryProvider>
           <NavigationDock />
           <LoginDialog />
         </TooltipProvider>

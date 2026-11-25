@@ -4,7 +4,7 @@ import { useLocation } from "wouter";
 import InfiniteCanvasEditor from "@/components/InfiniteCanvasEditor";
 import Mascot, { type MascotName } from "@/components/ui/Mascot";
 import { useAppAuth } from "@/hooks/useAppAuth";
-import { useScrapbookLibrary } from "@/hooks/useScrapbookLibrary";
+import { useSharedScrapbookLibrary } from "@/contexts/ScrapbookLibraryContext";
 import { getScrapbookComposition } from "@/lib/scrapbook-library";
 
 /** Pantalla de estado (cargando, error, sin sesión) con la misma estética que Home. */
@@ -25,7 +25,7 @@ function StatusScreen({ mascot, title, children, busy = false }: { mascot: Masco
 export default function ScrapbookEditorPage({ id }: { id: string }) {
   const auth = useAppAuth();
   const [, setLocation] = useLocation();
-  const library = useScrapbookLibrary(auth.user, auth.provider);
+  const library = useSharedScrapbookLibrary();
   const scrapbook = library.scrapbooks.find((book) => book.id === id) ?? null;
   const status = scrapbook ? library.compositionStatus(scrapbook.id) : "loading";
   const composition = useMemo(() => (scrapbook && (scrapbook.composition || status === "ready") ? getScrapbookComposition(scrapbook) : null), [scrapbook, status]);

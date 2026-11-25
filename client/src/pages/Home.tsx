@@ -10,7 +10,7 @@ import QrScannerDialog from "@/components/QrScannerDialog";
 import ScrapbookPhotoView from "@/components/ScrapbookPhotoView";
 import ScrapbookCard, { scrapbookGridVariants } from "@/components/ScrapbookCard";
 import { useAppAuth } from "@/hooks/useAppAuth";
-import { useScrapbookLibrary } from "@/hooks/useScrapbookLibrary";
+import { useSharedScrapbookLibrary } from "@/contexts/ScrapbookLibraryContext";
 import { getScrapbookComposition } from "@/lib/scrapbook-library";
 import type { Scrapbook } from "@/lib/scrapbooks";
 import EmptyState from "@/components/ui/EmptyState";
@@ -37,7 +37,7 @@ export default function Home() {
   const { user, isAuthenticated } = auth;
   const [, setLocation] = useLocation();
   // Estado compartido: los scrapbooks (con su composición) viven aquí (Supabase o local), no en el editor.
-  const library = useScrapbookLibrary(user, auth.provider);
+  const library = useSharedScrapbookLibrary();
   const { scrapbooks } = library;
   const [creating, setCreating] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<Scrapbook | null>(null);

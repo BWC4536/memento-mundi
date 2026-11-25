@@ -76,7 +76,10 @@ export function useScrapbookLibrary(user: AppUser | null, provider: "supabase" |
       requested.current.add(id);
       setStatuses((current) => ({ ...current, [id]: "loading" }));
       try {
-        const composition = await repository.loadComposition(id);
+        const remote = await repository.loadComposition(id);
+        // Si un guardado no llegó a la nube, la copia de este dispositivo puede ser más reciente.
+        const backup = loadCompositionLocally(id);
+        const composition = backup && (!remote || Date.parse(backup.updatedAt) > Date.parse(remote.updatedAt)) ? backup : remote;
         if (composition) setScrapbooks((items) => items.map((book) => (book.id === id ? { ...book, composition } : book)));
         setStatuses((current) => ({ ...current, [id]: "ready" }));
       } catch {
