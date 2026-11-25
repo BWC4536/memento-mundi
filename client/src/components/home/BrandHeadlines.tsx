@@ -39,8 +39,8 @@ export function RecuerdaMementoTitle({ as: Tag = "h2", className = "" }: { as?: 
       <span aria-hidden className={`block whitespace-nowrap ${TEAL} uppercase`}>Recuerda</span>
       <span aria-hidden className={`block translate-x-[.9em] ${TEAL} uppercase`}>el</span>
       {/* "Memento" es el logotipo en naranja (MEMENTO_FRASE_NARANJA.svg), centrado bajo el titular */}
-      <span aria-hidden className="mt-[.12em] block">
-        <img src="/MEMENTO_FRASE_NARANJA.svg" alt="" draggable={false} className="block h-[.95em] w-auto max-w-none select-none" />
+      <span aria-hidden className="-mt-[.04em] block">
+        <img src="/MEMENTO_FRASE_NARANJA.svg" alt="" draggable={false} className="block h-[1.2em] w-auto max-w-none select-none" />
       </span>
     </MotionTag>
   );
