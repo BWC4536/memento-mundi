@@ -69,6 +69,14 @@ button:focus-visible, a:focus-visible { outline: 3px solid var(--primary); outli
 .sticker-button { position: relative; overflow: hidden; }
 .sticker-button::after { content: ""; position: absolute; right: -2px; top: -2px; width: 18px; height: 18px; background: var(--background); border-left: 2px solid var(--foreground); border-bottom: 2px solid var(--foreground); transform: translate(9px, -9px) rotate(45deg); transition: transform .18s cubic-bezier(.23,1,.32,1); }
 .sticker-button:hover::after { transform: translate(2px, -2px) rotate(45deg); }
+/* Mapa del atlas (Leaflet): contexto de apilado propio para que sus capas no tapen el dock ni los modales,
+   y un velo suave sobre las teselas para acercarlas a la paleta crema de la marca. */
+.atlas-map { isolation: isolate; z-index: 0; background: #cbd8d2; font-family: inherit; }
+.atlas-map .leaflet-tile-pane { filter: sepia(.2) saturate(.8) contrast(.96) brightness(1.03); }
+.atlas-map .atlas-pin { background: transparent; border: 0; }
+.atlas-map .leaflet-control-attribution { background: rgba(234,231,218,.9); color: #0B2130; font-size: 10px; font-weight: 700; border-top-left-radius: 8px; padding: 2px 8px; }
+.atlas-map .leaflet-control-attribution a { color: #0B2130; text-decoration: underline; }
+.atlas-map .leaflet-marker-icon:focus-visible button { outline: 3px solid #FA9223; outline-offset: 4px; }
 /* Mascota: tamaño fijo por breakpoint, sin sombras ni brillos (acabado mate de pegatina). */
 .mascot-img { width: var(--mascot-size-mobile); }
 @media (min-width: 640px) { .mascot-img { width: var(--mascot-size); } }
