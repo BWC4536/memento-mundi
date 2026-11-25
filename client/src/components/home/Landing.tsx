@@ -56,9 +56,9 @@ export default function Landing({ header, onStore, onLogin }: Props) {
             </motion.div>
           </div>
 
-          <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.15, duration: 0.6 }} className="relative">
+          <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.15, duration: 0.6 }} className="relative isolate">
             <PhotoCarousel3D photos={CAROUSEL_PAISAJES} priority />
-            {/* La mascota despega la pegatina junto a las fotos */}
+            {/* La mascota despega la pegatina junto a las fotos (isolate: sus capas nunca superan a un diálogo) */}
             <div className="pointer-events-none absolute -bottom-6 -left-2 z-[120] hidden sm:block lg:-left-6">
               <Mascot name="28-pegatina-despegar" size="sm" tilt={-8} />
             </div>

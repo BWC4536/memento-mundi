@@ -31,7 +31,6 @@ export default function PhotoCarousel3D({ photos, className = "", priority = fal
   const { width } = useElementSize(wrapperRef);
   const reduceMotion = useReducedMotion();
   const rotation = useMotionValue(0);
-  const hovering = useRef(false);
   const resumeAt = useRef(0);
   const drag = useRef<{ x: number; start: number; moved: boolean; id: number } | null>(null);
   /** El click que cierra un arrastre no debe saltar a otra foto. */
@@ -52,7 +51,7 @@ export default function PhotoCarousel3D({ photos, className = "", priority = fal
   useEffect(() => radius.set(ringRadius), [radius, ringRadius]);
 
   useAnimationFrame((_, delta) => {
-    if (reduceMotion || hovering.current || drag.current || performance.now() < resumeAt.current) return;
+    if (reduceMotion || drag.current || performance.now() < resumeAt.current) return;
     rotation.set(rotation.get() - Math.min(delta, 50) * AUTO_SPEED);
   });
 
@@ -119,7 +118,7 @@ export default function PhotoCarousel3D({ photos, className = "", priority = fal
       aria-label="Fotos de viaje"
       tabIndex={0}
       onKeyDown={onKeyDown}
-      className={`relative w-full select-none rounded-[2rem] outline-none focus-visible:ring-4 focus-visible:ring-orange/50 ${className}`}
+      className={`relative isolate w-full select-none rounded-[2rem] outline-none focus-visible:ring-4 focus-visible:ring-orange/50 ${className}`}
     >
       <div
         className="relative mx-auto cursor-grab touch-pan-y active:cursor-grabbing"
@@ -128,8 +127,6 @@ export default function PhotoCarousel3D({ photos, className = "", priority = fal
         onPointerMove={onPointerMove}
         onPointerUp={endDrag}
         onPointerCancel={endDrag}
-        onPointerEnter={(event) => { if (event.pointerType === "mouse") hovering.current = true; }}
-        onPointerLeave={(event) => { if (event.pointerType === "mouse") hovering.current = false; }}
       >
         {/* Sombra en el suelo */}
         <div aria-hidden className="absolute bottom-0 left-1/2 h-7 -translate-x-1/2 rounded-[50%] bg-ink/20 blur-md" style={{ width: Math.min(ringRadius * 2 + cardWidth, available) }} />
