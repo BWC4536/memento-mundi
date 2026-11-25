@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowUpRight, Globe, LogOut, Menu, UserRound, X } from "lucide-react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
+import { BrandLockup } from "@/components/BrandCorner";
 
 export type PillNavLink = { label: string; href?: string; onClick?: () => void };
 
@@ -19,11 +20,13 @@ const TEAL = "text-[#0A7186]";
 const SCROLLED_AT = 48;
 
 /**
- * Barra "píldora" fija arriba (Neo Pill Nav): fondo blanco, logo a la izquierda, enlaces al centro y cuenta a la derecha.
+ * Barra "píldora" fija arriba (Neo Pill Nav), solo en móvil y tablet (lg:hidden): fondo blanco,
+ * lockup de Memento Mundi a la izquierda, enlaces al centro (tablet) y cuenta a la derecha.
  * Al bajar cambia de variante: se estrecha, coge borde y sombra dura y aparece el botón coral.
  * En móvil los enlaces pasan a un menú desplegable.
  */
 export default function PillNav({ links, cta, accountLabel, onAccount, onSignOut }: Props) {
+  const [location] = useLocation();
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
 
@@ -32,12 +35,6 @@ export default function PillNav({ links, cta, accountLabel, onAccount, onSignOut
     update();
     window.addEventListener("scroll", update, { passive: true });
     return () => window.removeEventListener("scroll", update);
-  }, []);
-
-  // Mientras la barra está en pantalla, el lockup flotante de la esquina sobra.
-  useEffect(() => {
-    document.documentElement.dataset.pillnav = "1";
-    return () => { delete document.documentElement.dataset.pillnav; };
   }, []);
 
   useEffect(() => {
@@ -52,26 +49,26 @@ export default function PillNav({ links, cta, accountLabel, onAccount, onSignOut
     link.onClick?.();
   };
 
-  const linkClass = `rounded-full px-3 py-2 font-brand text-[15px] leading-none ${TEAL} transition-colors hover:bg-orange/20 lg:text-base`;
+  const linkClass = `rounded-full px-2.5 py-2 font-brand text-[15px] leading-none ${TEAL} transition-colors hover:bg-orange/20`;
 
   const renderLink = (link: PillNavLink, className: string) =>
     link.href ? (
-      <Link key={link.label} href={link.href} onClick={() => setOpen(false)} className={className}>{link.label}</Link>
+      <Link key={link.label} href={link.href} onClick={() => setOpen(false)} aria-current={location === link.href ? "page" : undefined} className={`${className} ${location === link.href ? "bg-orange/25" : ""}`}>{link.label}</Link>
     ) : (
       <button key={link.label} type="button" onClick={() => run(link)} className={className}>{link.label}</button>
     );
 
   return (
-    <div className="pointer-events-none fixed inset-x-0 top-3 z-[70] flex justify-center px-3 sm:top-[30px] sm:px-4">
+    <div className="pointer-events-none fixed inset-x-0 top-3 z-[70] flex justify-center px-3 sm:top-4 sm:px-4 lg:hidden">
       <nav
         aria-label="Principal"
-        className={`pointer-events-auto relative flex h-14 w-full items-center justify-between gap-2 rounded-full border-2 bg-white pl-3 pr-2 transition-[max-width,box-shadow,border-color] duration-300 ease-out sm:h-[71px] sm:pl-5 sm:pr-3 ${scrolled ? "max-w-[820px] border-ink shadow-[4px_4px_0_#222222]" : "max-w-[1098px] border-transparent shadow-[0_6px_24px_rgba(11,33,48,.08)]"}`}
+        className={`pointer-events-auto relative flex h-14 w-full items-center justify-between gap-2 rounded-full border-2 bg-white pl-3 pr-2 transition-[max-width,box-shadow,border-color] duration-300 ease-out sm:h-16 sm:pl-4 sm:pr-3 ${scrolled ? "max-w-[760px] border-ink shadow-[4px_4px_0_#222222]" : "max-w-[1098px] border-transparent shadow-[0_6px_24px_rgba(11,33,48,.08)]"}`}
       >
         <Link href="/" aria-label="Memento Mundi, ir a inicio" className="flex shrink-0 items-center gap-2">
-          <img src="/MEMENTO_LOGO.svg" alt="" className="h-9 w-9 select-none object-contain sm:h-11 sm:w-11" draggable={false} />
+          <BrandLockup compact />
         </Link>
 
-        <div className="hidden items-center gap-1 md:flex">
+        <div className="hidden items-center gap-0.5 md:flex">
           {links.map((link) => renderLink(link, linkClass))}
         </div>
 
@@ -85,7 +82,7 @@ export default function PillNav({ links, cta, accountLabel, onAccount, onSignOut
                 initial={{ opacity: 0, scale: 0.85, width: 0 }}
                 animate={{ opacity: 1, scale: 1, width: "auto" }}
                 exit={{ opacity: 0, scale: 0.85, width: 0 }}
-                className="hidden items-center gap-1.5 overflow-hidden whitespace-nowrap rounded-full border-2 border-ink bg-[#FFB4AD] px-4 py-2.5 text-xs font-black shadow-[3px_3px_0_#222222] transition-transform hover:-translate-y-0.5 active:scale-95 min-[420px]:flex"
+                className="hidden items-center gap-1.5 overflow-hidden whitespace-nowrap rounded-full border-2 border-ink bg-[#FFB4AD] px-4 py-2.5 text-xs font-black shadow-[3px_3px_0_#222222] transition-transform hover:-translate-y-0.5 active:scale-95 min-[420px]:flex md:hidden"
               >
                 {cta.label} <ArrowUpRight size={14} />
               </motion.button>

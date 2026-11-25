@@ -1,14 +1,15 @@
+import type { ReactNode } from "react";
 import { motion } from "framer-motion";
 import { ArrowUpRight, ChevronRight, ShoppingBag } from "lucide-react";
 import CharacterGuide from "@/components/CharacterGuide";
 import Mascot, { type MascotName } from "@/components/ui/Mascot";
 import PaisajePhoto, { PhotoTag } from "@/components/home/PaisajePhoto";
-import PillNav from "@/components/home/PillNav";
 import { RecuerdaMementoBlock, ViveMundiBlock } from "@/components/home/HomeShowcase";
 import PhotoMosaic from "@/components/home/PhotoMosaic";
 import { PAISAJES, type Paisaje } from "@/lib/paisajes";
 
 type Props = {
+  header: ReactNode;
   onStore: () => void;
   onLogin: () => void;
 };
@@ -27,22 +28,13 @@ const fadeUp = (delay = 0) => ({
 });
 
 /** Página de inicio para quien aún no ha iniciado sesión. */
-export default function Landing({ onStore, onLogin }: Props) {
-  const goTo = (id: string) => () => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+export default function Landing({ header, onStore, onLogin }: Props) {
   return (
     <main className="min-h-screen overflow-x-hidden bg-[#EAE7DA] pb-32">
-      <PillNav
-        links={[
-          { label: "Cómo funciona", onClick: goTo("como-funciona") },
-          { label: "Tienda", href: "/store" },
-          { label: "Explorar", href: "/explore" },
-        ]}
-        cta={{ label: "Ir a la tienda", onClick: onStore }}
-        accountLabel="Iniciar sesión"
-        onAccount={onLogin}
-      />
+      {/* Escritorio: cabecera de siempre (en móvil y tablet manda la barra global) */}
+      <div className="mx-auto hidden max-w-7xl px-12 pt-5 lg:block">{header}</div>
 
-      <div className="pt-28 sm:pt-40">
+      <div className="pt-28 sm:pt-32 lg:pt-16">
         <ViveMundiBlock priority>
           <motion.div initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="mt-10 flex flex-col items-center gap-3 min-[420px]:flex-row min-[420px]:justify-center">
             <button type="button" onClick={onStore} className="flex min-h-12 w-full items-center justify-center gap-3 rounded-2xl border-2 border-ink bg-orange px-7 py-4 text-sm font-black shadow-hard transition-transform hover:-translate-y-1 active:scale-[.97] min-[420px]:w-auto">
