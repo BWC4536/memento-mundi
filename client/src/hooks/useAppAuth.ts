@@ -35,8 +35,8 @@ export function useAppAuth() {
   const manus = useAuth();
   const { session, ready } = useSupabaseSession();
 
-  const signOut = useCallback(async () => {
-    if (isSupabaseConfigured) await authStore?.signOut();
+  const signOut = useCallback(async (scope: "local" | "global" = "local") => {
+    if (isSupabaseConfigured) await authStore?.signOut(scope);
     else await manus.logout();
   }, [manus]);
 

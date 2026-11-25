@@ -95,6 +95,8 @@ button:focus-visible, a:focus-visible { outline: 3px solid var(--primary); outli
 .editor-action:hover { border-color: #FA9223; background: rgba(250,146,35,.15); color: #EAE7DA; }
 @media (max-width: 480px) { h1 { font-size: clamp(2.65rem, 15vw, 4.4rem) !important; } h2 { font-size: clamp(1.9rem, 10vw, 3.25rem) !important; } h3 { font-size: clamp(1.45rem, 8vw, 2.4rem) !important; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+/* Preferencia "Reducir animaciones" del perfil (misma regla, activada por clase). */
+html.reduce-motion, html.reduce-motion *, html.reduce-motion *::before, html.reduce-motion *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
 
 @media (prefers-reduced-motion: reduce) {
   .sticker-scroll-layer { transition: none !important; }

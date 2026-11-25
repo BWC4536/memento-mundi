@@ -149,10 +149,11 @@ export function createAuthStore(client: SupabaseClient, storage: Pick<Storage, "
     return session?.accessToken ?? null;
   }
 
-  async function signOut() {
-    const token = session?.accessToken;
+  /** "local": solo este dispositivo. "global": revoca la sesión en todos los dispositivos. */
+  async function signOut(scope: "local" | "global" = "local") {
+    const token = scope === "global" ? await getAccessToken() : session?.accessToken;
     persist(null);
-    if (token) await client.request("/auth/v1/logout", { method: "POST", accessToken: token }).catch(() => undefined);
+    if (token) await client.request(`/auth/v1/logout?scope=${scope}`, { method: "POST", accessToken: token }).catch(() => undefined);
   }
 
   return {

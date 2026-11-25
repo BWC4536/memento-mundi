@@ -15,7 +15,7 @@ const accentForPath = (path: string): Accent | undefined => {
   if (path === "/") return "home";
   if (path.startsWith("/store")) return "store";
   if (path.startsWith("/explore")) return "explore";
-  if (path.startsWith("/profile")) return "profile";
+  if (path.startsWith("/perfil") || path.startsWith("/profile") || ["/privacidad", "/terminos", "/cookies"].includes(path)) return "profile";
   return undefined;
 };
 
@@ -76,7 +76,7 @@ export default function NavigationDock() {
       icon: <UserRound size={iconSize} strokeWidth={2.6} />,
       label: "Perfil",
       accent: accent === "profile",
-      onClick: () => setLocation("/profile"),
+      onClick: () => setLocation("/perfil"),
     },
   ], [accent, compact, iconSize, location, setLocation]);
 

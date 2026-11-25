@@ -1,15 +1,13 @@
-import { ArrowLeft, Compass, Map, ShoppingBag, UserRound } from "lucide-react";
+import { ArrowLeft, Compass, Map, ShoppingBag } from "lucide-react";
 import { useLocation } from "wouter";
 import ExplorePage from "@/pages/ExplorePage";
 import CharacterGuide from "@/components/CharacterGuide";
-import Mascot from "@/components/ui/Mascot";
 
-type Section = "Tienda" | "Explorar" | "Perfil";
+type Section = "Tienda" | "Explorar";
 
 const content: Record<Section, { eyebrow: string; title: string; body: string; icon: typeof ShoppingBag; action: string }> = {
   Tienda: { eyebrow: "Objetos para llevar", title: "Recuerdos que empiezan en tus manos.", body: "Descubre pegatinas, parches y pequeñas piezas NFC para que cada ruta tenga un punto de partida físico.", icon: ShoppingBag, action: "Ver colección" },
   Explorar: { eyebrow: "Atlas compartido", title: "Elige una coordenada y déjate llevar.", body: "Explora destinos, rutas y scrapbooks que esperan una nueva mirada. La siguiente historia puede estar a la vuelta.", icon: Compass, action: "Abrir mapa" },
-  Perfil: { eyebrow: "Tu pasaporte digital", title: "Todo lo que has guardado, contigo.", body: "Gestiona tus datos, tus destinos desbloqueados y la forma en que quieres aparecer en tu atlas personal.", icon: UserRound, action: "Editar perfil" },
 };
 
 export default function SectionPage({ section }: { section: Section }) {
@@ -33,7 +31,7 @@ function InfoSection({ section }: { section: Section }) {
       <section className="mx-auto flex min-h-[60vh] max-w-4xl items-center pt-6 sm:pt-8">
         <div className="w-full rounded-[2rem] border-2 border-ink bg-white/70 p-5 shadow-hard sm:p-12">
           <div className="flex flex-wrap items-start justify-between gap-4">
-            {section === "Perfil" ? <Mascot name="03b-perfil-usuario" size="md" mobileSize="sm" /> : <div className="flex h-14 w-14 items-center justify-center rounded-2xl border-2 border-ink bg-orange shadow-hard-sm sm:h-16 sm:w-16"><Icon size={26} /></div>}
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl border-2 border-ink bg-orange shadow-hard-sm sm:h-16 sm:w-16"><Icon size={26} /></div>
             {/* Arturo acompañando el texto grande */}
             <CharacterGuide
               character="arturo"
