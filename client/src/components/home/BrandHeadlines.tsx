@@ -31,15 +31,15 @@ export function ViveMundiTitle({ as: Tag = "h1", className = "" }: { as?: "h1" |
   );
 }
 
-/** "RECUERDA EL Memento". */
+/** "RECUERDA EL Memento": bloque centrado, interlineado normal, "EL" desplazado a la derecha. */
 export function RecuerdaMementoTitle({ as: Tag = "h2", className = "" }: { as?: "h1" | "h2"; className?: string }) {
   const MotionTag = motion[Tag];
   return (
-    <MotionTag {...rise()} aria-label="Recuerda el Memento" className={`mx-auto w-fit font-display !leading-[.82] tracking-[-.03em] ${SIZE} ${className}`}>
-      <span aria-hidden className={`block ${TEAL} uppercase`}>Recuerda</span>
-      <span aria-hidden className={`ml-[2.1em] block ${TEAL} uppercase`}>el</span>
-      {/* "Memento" es el logotipo (la n es una cámara), en naranja: MEMENTO_FRASE_NARANJA.svg */}
-      <span aria-hidden className="mt-[.06em] block">
+    <MotionTag {...rise()} aria-label="Recuerda el Memento" className={`mx-auto flex w-fit flex-col items-center text-center font-display !leading-[1] tracking-normal ${SIZE} ${className}`}>
+      <span aria-hidden className={`block whitespace-nowrap ${TEAL} uppercase`}>Recuerda</span>
+      <span aria-hidden className={`block translate-x-[.9em] ${TEAL} uppercase`}>el</span>
+      {/* "Memento" es el logotipo en naranja (MEMENTO_FRASE_NARANJA.svg), centrado bajo el titular */}
+      <span aria-hidden className="mt-[.12em] block">
         <img src="/MEMENTO_FRASE_NARANJA.svg" alt="" draggable={false} className="block h-[.95em] w-auto max-w-none select-none" />
       </span>
     </MotionTag>
