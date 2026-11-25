@@ -18,19 +18,19 @@ export default function BrandCorner() {
         className="h-10 w-10 shrink-0 select-none object-contain drop-shadow-sm sm:h-14 sm:w-14"
         draggable={false}
       />
-      <span className="flex min-w-0 flex-col">
-        <span className="flex items-end gap-1.5">
-          <img
-            src="/MEMENTO_FRASE.svg"
-            alt="Memento"
-            className="h-5 w-auto min-w-0 select-none object-contain sm:h-7"
-            draggable={false}
-          />
-          <span className="font-brand text-lg font-black leading-none text-orange sm:text-2xl">mundi</span>
-        </span>
-        <span className="mt-1 font-mono text-[7px] font-black uppercase tracking-[0.16em] text-ink/70 sm:text-[8px]">
-          viaja. guarda. vuelve.
-        </span>
+      <span className="flex min-w-0 items-end gap-1.5">
+        <img
+          src="/MEMENTO_FRASE.svg"
+          alt="Memento"
+          className="h-5 w-auto min-w-0 select-none object-contain sm:h-7"
+          draggable={false}
+        />
+        <img
+          src="/Mundi_bola.svg"
+          alt="Mundi"
+          className="h-5 w-auto min-w-0 select-none object-contain sm:h-7"
+          draggable={false}
+        />
       </span>
     </Link>
   );
