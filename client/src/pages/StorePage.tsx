@@ -4,6 +4,7 @@ import { useLocation } from "wouter";
 import { useAppAuth } from "@/hooks/useAppAuth";
 import StickerScrollHero from "@/components/StickerScrollHero";
 import CharacterGuide from "@/components/CharacterGuide";
+import Mascot from "@/components/ui/Mascot";
 
 type ProductKind = "sticker" | "keyring" | "magnet" | "ornament" | "wall";
 type Pack = { id: string; name: string; kicker: string; description: string; price: string; badge?: string; color: string; image: string; items: string[]; featured?: boolean };
@@ -120,17 +121,17 @@ export default function StorePage() {
         {/* Pasos de uso */}
         <section className="mt-10 grid gap-4 sm:grid-cols-3" id="how">
           <div className="rounded-[1.4rem] border-2 border-ink bg-orange p-5 shadow-hard-sm">
-            <span className="font-mono text-3xl">01</span>
+            <div className="flex items-start justify-between gap-3"><span className="font-mono text-3xl">01</span><Mascot name="28-pegatina-despegar" size="sm" /></div>
             <h2 className="mt-6 font-display text-2xl font-black">Pega</h2>
             <p className="mt-2 text-sm font-medium text-ink/75">Coloca tu pegatina en una postal, mochila o cuaderno de viaje.</p>
           </div>
           <div className="rounded-[1.4rem] border-2 border-ink bg-white/60 p-5 shadow-hard-sm">
-            <span className="font-mono text-3xl">02</span>
+            <div className="flex items-start justify-between gap-3"><span className="font-mono text-3xl">02</span><Mascot name="13-escanear-qr" size="sm" /></div>
             <h2 className="mt-6 font-display text-2xl font-black">Escanea</h2>
             <p className="mt-2 text-sm font-medium text-ink/75">Abre Memento Mundi y desbloquea el scrapbook de esa coordenada.</p>
           </div>
           <div className="rounded-[1.4rem] border-2 border-ink bg-[#d8e2dc] p-5 shadow-hard-sm">
-            <span className="font-mono text-3xl">03</span>
+            <div className="flex items-start justify-between gap-3"><span className="font-mono text-3xl">03</span><Mascot name="37-pegatina-avion" size="sm" /></div>
             <h2 className="mt-6 font-display text-2xl font-black">Vuelve</h2>
             <p className="mt-2 text-sm font-medium text-ink/75">Añade fotos, invita a tu gente y revive el viaje cuando quieras.</p>
           </div>
@@ -217,7 +218,8 @@ export default function StorePage() {
       {showCart && (
         <div className="fixed bottom-[5.5rem] right-3 z-50 max-h-[calc(100dvh-7rem)] w-[calc(100%-1.5rem)] max-w-sm overflow-y-auto rounded-[1.5rem] border-2 border-ink bg-cream p-4 shadow-hard sm:bottom-28 sm:right-8">
           <div className="flex items-center justify-between">
-            <div>
+            <Mascot name="09-carrito" size="sm" className="!w-16 shrink-0" />
+            <div className="min-w-0 flex-1 px-3">
               <p className="text-[10px] font-black uppercase tracking-[.16em] text-orange">Tu kit</p>
               <h2 className="font-display text-2xl font-black">{cart.length} pack{cart.length === 1 ? "" : "s"}</h2>
             </div>

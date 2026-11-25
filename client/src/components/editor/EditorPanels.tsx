@@ -82,6 +82,7 @@ import {
 } from "@/lib/composition-presets";
 import { ElementContent } from "@/components/scrapbook/CompositionCanvas";
 import { DECORATION_GROUPS, DECORATION_SAMPLES, decorationLabel, getDecorationSample } from "@/components/scrapbook/decorations";
+import Mascot from "@/components/ui/Mascot";
 
 export type PanelId = "diseno" | "elementos" | "fotos" | "texto" | "filtros" | "capas" | "ajustes";
 
@@ -503,6 +504,7 @@ export function PhotosPanel({ api }: { api: EditorApi }) {
   return (
     <div>
       <Section title="Añadir foto">
+        {api.uploading ? <Mascot name="32-subir-foto-nube" size="sm" className="mx-auto mb-3" decorative={false} alt="Subiendo fotos" /> : null}
         <div className="grid gap-2">
           {selected?.type === "frame" ? (
             <ActionButton tone="primary" onClick={() => api.requestPhotos({ kind: "fill", id: selected.id })}>

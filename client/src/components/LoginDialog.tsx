@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowLeft, Loader2, Mail, Sparkles, X } from "lucide-react";
+import { ArrowLeft, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 import { closeLoginDialog, openLoginDialog, useLoginDialogOpen } from "@/hooks/useAppAuth";
 import { authStore, consumeAuthLinkError, friendlyAuthError, useSupabaseSession } from "@/lib/supabase/auth";
+import Mascot from "@/components/ui/Mascot";
 
 const RESEND_SECONDS = 60;
 
@@ -105,9 +106,7 @@ export default function LoginDialog() {
             <button type="button" onClick={close} aria-label="Cerrar" className="absolute right-4 top-4 flex h-11 w-11 items-center justify-center rounded-full border-2 border-ink bg-white/70 transition-transform hover:rotate-90">
               <X size={18} />
             </button>
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl border-2 border-ink bg-orange shadow-hard-sm">
-              {step === "email" ? <Mail size={24} /> : <Sparkles size={24} />}
-            </div>
+            <Mascot key={step} name={step === "email" ? "18-candado-privacidad" : "19-email"} size="sm" />
             <h2 id="login-title" className="mt-5 !text-4xl">
               {step === "email" ? "Entra en tu atlas." : "Revisa tu correo."}
             </h2>

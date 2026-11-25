@@ -1,6 +1,6 @@
-import { cn } from "@/lib/utils";
-import { AlertTriangle, RotateCcw } from "lucide-react";
+import { RotateCcw } from "lucide-react";
 import { Component, ReactNode } from "react";
+import Mascot from "@/components/ui/Mascot";
 
 interface Props {
   children: ReactNode;
@@ -24,34 +24,33 @@ class ErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="flex items-center justify-center min-h-screen p-8 bg-background">
-          <div className="flex flex-col items-center w-full max-w-2xl p-8">
-            <AlertTriangle
-              size={48}
-              className="text-destructive mb-6 flex-shrink-0"
-            />
-
-            <h2 className="text-xl mb-4">An unexpected error occurred.</h2>
-
-            <div className="p-4 w-full rounded bg-muted overflow-auto mb-6">
-              <pre className="text-sm text-muted-foreground whitespace-break-spaces">
-                {this.state.error?.stack}
-              </pre>
-            </div>
+        <main className="flex min-h-screen items-center justify-center bg-cream p-4 text-ink">
+          <section className="w-full max-w-xl rounded-[2rem] border-2 border-ink bg-white/70 p-6 text-center shadow-hard sm:p-10">
+            <Mascot name="21-error-404-perdido" size="md" mobileSize="sm" className="mx-auto" decorative={false} alt="La mascota de Memento Mundi, desorientada" />
+            <h1 className="mt-4 font-display !text-4xl sm:!text-5xl">Algo ha salido mal.</h1>
+            <p className="mx-auto mt-3 max-w-sm text-base font-medium leading-relaxed text-ink/65">
+              Ha ocurrido un error inesperado. Recarga la página para seguir con tu viaje.
+            </p>
 
             <button
+              type="button"
               onClick={() => window.location.reload()}
-              className={cn(
-                "flex items-center gap-2 px-4 py-2 rounded-lg",
-                "bg-primary text-primary-foreground",
-                "hover:opacity-90 cursor-pointer"
-              )}
+              className="sticker-button mx-auto mt-7 flex min-h-12 items-center gap-2 rounded-xl border-2 border-ink bg-orange px-6 text-sm font-black shadow-hard-sm"
             >
               <RotateCcw size={16} />
-              Reload Page
+              Recargar página
             </button>
-          </div>
-        </div>
+
+            {this.state.error?.stack ? (
+              <details className="mt-6 text-left">
+                <summary className="cursor-pointer text-xs font-black uppercase tracking-wider text-ink/55">Detalles técnicos</summary>
+                <pre className="mt-2 max-h-48 overflow-auto rounded-xl border-2 border-ink/15 bg-cream p-3 text-xs text-ink/70 whitespace-break-spaces">
+                  {this.state.error.stack}
+                </pre>
+              </details>
+            ) : null}
+          </section>
+        </main>
       );
     }
 

@@ -2,6 +2,7 @@ import { ArrowLeft, Compass, Map, ShoppingBag, UserRound } from "lucide-react";
 import { useLocation } from "wouter";
 import ExplorePage from "@/pages/ExplorePage";
 import CharacterGuide from "@/components/CharacterGuide";
+import Mascot from "@/components/ui/Mascot";
 
 type Section = "Tienda" | "Explorar" | "Perfil";
 
@@ -32,9 +33,7 @@ function InfoSection({ section }: { section: Section }) {
       <section className="mx-auto flex min-h-[60vh] max-w-4xl items-center pt-6 sm:pt-8">
         <div className="w-full rounded-[2rem] border-2 border-ink bg-white/70 p-5 shadow-hard sm:p-12">
           <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl border-2 border-ink bg-orange shadow-hard-sm sm:h-16 sm:w-16">
-              <Icon size={26} />
-            </div>
+            {section === "Perfil" ? <Mascot name="03b-perfil-usuario" size="md" mobileSize="sm" /> : <div className="flex h-14 w-14 items-center justify-center rounded-2xl border-2 border-ink bg-orange shadow-hard-sm sm:h-16 sm:w-16"><Icon size={26} /></div>}
             {/* Arturo acompañando el texto grande */}
             <CharacterGuide
               character="arturo"

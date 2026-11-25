@@ -6,6 +6,7 @@ import { formatDate, relativeDate } from "@/lib/scrapbook-library";
 import type { Scrapbook } from "@/lib/scrapbooks";
 import CompositionCanvas from "@/components/scrapbook/CompositionCanvas";
 import CompositionViewer from "@/components/scrapbook/CompositionViewer";
+import Mascot from "@/components/ui/Mascot";
 
 type Props = {
   scrapbook: Scrapbook;
@@ -83,7 +84,7 @@ export default function ScrapbookPhotoView({ scrapbook, composition, onBack, onE
               label={`Previsualización de ${scrapbook.title}`}
               className="rounded-[1.2rem] border-2 border-ink"
               emptyState={
-                <div className="max-w-xs rounded-2xl border-2 border-ink bg-cream p-4 text-center shadow-hard-sm">
+                <div className="max-w-xs rounded-2xl border-2 border-ink bg-cream p-4 text-center shadow-hard-sm"><div className="hidden sm:block"><Mascot name="12-scrapbook-album" size="sm" className="mx-auto" /></div>
                   <p className="font-display text-2xl">Página en blanco</p>
                   <p className="mt-1 text-sm font-semibold text-ink/65">Pulsa Editar para añadir fotos, texto y decoración.</p>
                 </div>

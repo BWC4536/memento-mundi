@@ -49,6 +49,7 @@ import { useKeyboardInset, useMediaQuery } from "@/hooks/useMediaQuery";
 import type { PanZoomView } from "@/hooks/usePanZoom";
 import EditorStage, { type StageApi } from "@/components/editor/EditorStage";
 import { PANEL_LABELS, PanelContent, type EditorApi, type PanelId, type PhotoRequest } from "@/components/editor/EditorPanels";
+import Mascot from "@/components/ui/Mascot";
 
 export { CANVAS_IMAGE_ACCEPT } from "@/lib/image-upload";
 export type { CanvasElement, ScrapbookComposition } from "@/lib/composition";
@@ -102,6 +103,9 @@ function IconButton({ label, onClick, children, disabled, active, className = ""
 function EmptyCanvasState({ onPhoto, onText, onElements }: { onPhoto: () => void; onText: () => void; onElements: () => void }) {
   return (
     <div data-stage-ui className="pointer-events-auto max-w-[min(92%,22rem)] rounded-2xl border-2 border-ink bg-cream p-3 text-center text-ink shadow-hard sm:p-5">
+      <div className="hidden sm:block">
+        <Mascot name="12-scrapbook-album" size="sm" className="mx-auto" />
+      </div>
       <p className="font-display text-xl sm:text-3xl">Tu página está en blanco</p>
       <ol className="mx-auto mt-2 max-w-xs space-y-0.5 text-left text-[12px] font-bold leading-snug text-ink/70 sm:text-sm">
         <li>1. Añade una o varias fotos.</li>
