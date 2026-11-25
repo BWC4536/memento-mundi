@@ -33,7 +33,7 @@ export default function DownloadImageButton({ composition, title, className = ""
   return (
     <button type="button" onClick={() => void download()} disabled={busy} aria-busy={busy} aria-label="Descargar como imagen JPEG" title="Descargar como imagen (JPEG)" className={className}>
       {busy ? <Loader2 size={17} className="animate-spin" /> : <Download size={17} />}
-      {compact ? null : <span>{busy ? "Creando…" : "Descargar"}</span>}
+      {compact ? null : <span className="hidden sm:inline">{busy ? "Creando…" : "Descargar"}</span>}
     </button>
   );
 }

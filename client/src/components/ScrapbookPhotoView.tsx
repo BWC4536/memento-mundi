@@ -40,7 +40,7 @@ export default function ScrapbookPhotoView({ scrapbook, composition, onBack, onE
             <span className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-ink bg-white/60">
               <ArrowLeft size={17} />
             </span>
-            <span>Scrapbooks</span>
+            <span className="hidden sm:inline">Scrapbooks</span>
           </button>
           <div className="flex items-center gap-2" role="toolbar" aria-label="Acciones del scrapbook">
             <button
@@ -60,7 +60,7 @@ export default function ScrapbookPhotoView({ scrapbook, composition, onBack, onE
             <DownloadImageButton
               composition={composition}
               title={scrapbook.title}
-              className="flex min-h-11 items-center gap-2 rounded-xl border-2 border-ink bg-white/70 px-3 text-sm font-black shadow-hard-sm transition-transform hover:-translate-y-0.5 active:translate-y-0 active:shadow-none disabled:opacity-60 sm:px-4"
+              className="flex h-11 min-w-11 items-center justify-center gap-2 rounded-xl border-2 border-ink bg-white/70 px-2.5 text-sm font-black shadow-hard-sm transition-transform hover:-translate-y-0.5 active:translate-y-0 active:shadow-none disabled:opacity-60 sm:px-4"
             />
           </div>
         </div>
