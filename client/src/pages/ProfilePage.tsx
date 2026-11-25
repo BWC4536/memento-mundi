@@ -62,7 +62,7 @@ function useActiveSection(ids: string[], ready: boolean) {
   return active;
 }
 
-function SectionNav({ items, active }: { items: NavItem[]; active: string }) {
+function SectionNav({ items, active, onSelect }: { items: NavItem[]; active: string; onSelect: (id: string) => void }) {
   return (
     <nav aria-label="Secciones del perfil" className="sticky top-0 z-30 -mx-4 border-b-2 border-ink/10 bg-[#EAE7DA]/92 px-4 py-2 backdrop-blur-md sm:-mx-8 sm:px-8 lg:top-8 lg:mx-0 lg:self-start lg:border-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none">
       <ul className="flex gap-2 overflow-x-auto [scrollbar-width:none] lg:flex-col lg:gap-1 lg:overflow-visible">
@@ -73,7 +73,7 @@ function SectionNav({ items, active }: { items: NavItem[]; active: string }) {
               aria-current={active === item.id ? "true" : undefined}
               onClick={(event) => {
                 event.preventDefault();
-                scrollToSection(item.id);
+                onSelect(item.id);
               }}
               className={`flex min-h-10 items-center rounded-full border-2 px-4 text-xs font-black transition-colors lg:min-h-11 lg:rounded-xl lg:text-sm ${active === item.id ? "border-ink bg-ink text-cream" : "border-ink/15 bg-white/50 hover:border-ink lg:border-transparent lg:bg-transparent"}`}
             >
@@ -93,6 +93,8 @@ export default function ProfilePage() {
   const controller = useProfile(auth.isAuthenticated ? auth.user : null, auth.provider);
   const { bundle } = controller;
   const formRef = useRef<ProfileFormHandle>(null);
+  // La edición de datos empieza plegada: solo se despliega con su botón o con "Editar perfil".
+  const [editOpen, setEditOpen] = useState(false);
 
   const signedIn = auth.isAuthenticated && !!auth.user;
   const navItems = signedIn ? SIGNED_IN_NAV : GUEST_NAV;
@@ -108,6 +110,7 @@ export default function ProfilePage() {
   useEffect(() => {
     if (!ready) return;
     const hash = window.location.hash.slice(1);
+    if (hash === "perfil") setEditOpen(true);
     if (hash && ids.includes(hash)) window.requestAnimationFrame(() => document.getElementById(hash)?.scrollIntoView({ block: "start" }));
   }, [ids, ready]);
 
@@ -145,6 +148,7 @@ export default function ProfilePage() {
   };
 
   const editProfile = () => {
+    setEditOpen(true);
     scrollToSection("perfil");
     window.setTimeout(() => formRef.current?.focus(), prefersReducedMotion() ? 0 : 450);
   };
@@ -167,7 +171,7 @@ export default function ProfilePage() {
   const settingsColumn = (sections: React.ReactNode) => (
     // En móvil es un bloque (la barra sticky recorre todas las secciones); en escritorio, rejilla con índice lateral.
     <div className="mt-6 lg:mt-8 lg:grid lg:grid-cols-[12rem_minmax(0,1fr)] lg:gap-10">
-      <SectionNav items={navItems} active={active} />
+      <SectionNav items={navItems} active={active} onSelect={(id) => (id === "perfil" ? editProfile() : scrollToSection(id))} />
       <div className="mt-4 min-w-0 space-y-6 lg:mt-0">{sections}</div>
     </div>
   );
@@ -226,7 +230,7 @@ export default function ProfilePage() {
       />
       {settingsColumn(
         <>
-          <ProfileForm ref={formRef} profile={profile} controller={controller} />
+          <ProfileForm ref={formRef} profile={profile} controller={controller} open={editOpen} onToggle={() => setEditOpen((value) => !value)} />
           <RewardsSection points={profile.ugcPoints} claims={bundle.claims} controller={controller} />
           <StickersSection stickers={bundle.stickers} />
           <PrivacySection

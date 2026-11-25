@@ -2,7 +2,22 @@ import type { InputHTMLAttributes, ReactNode, Ref } from "react";
 import { Link } from "wouter";
 import { initialsOf } from "@/lib/profile";
 
-export function Section({ id, eyebrow, title, description, action, children }: { id: string; eyebrow: string; title: string; description?: ReactNode; action?: ReactNode; children: ReactNode }) {
+type Collapsible = { open: boolean; onToggle: () => void };
+
+/** Sección de la página. Con `collapsible`, el contenido se pliega y el botón de la cabecera lo abre o cierra. */
+export function Section({ id, eyebrow, title, description, action, collapsible, children }: { id: string; eyebrow: string; title: string; description?: ReactNode; action?: ReactNode; collapsible?: Collapsible; children: ReactNode }) {
+  const bodyId = `${id}-body`;
+  const toggle = collapsible ? (
+    <button
+      type="button"
+      onClick={collapsible.onToggle}
+      aria-expanded={collapsible.open}
+      aria-controls={bodyId}
+      className="flex min-h-11 shrink-0 items-center gap-2 rounded-xl border-2 border-ink bg-cream px-4 text-sm font-black transition-colors hover:bg-orange"
+    >
+      {collapsible.open ? "Cerrar" : "Editar"}
+    </button>
+  ) : null;
   return (
     <section id={id} aria-labelledby={`${id}-title`} className="scroll-mt-24 rounded-[1.75rem] border-2 border-ink bg-white/60 p-5 shadow-hard-sm sm:rounded-[2rem] sm:p-8 lg:scroll-mt-8">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -13,9 +28,11 @@ export function Section({ id, eyebrow, title, description, action, children }: {
           </h2>
           {description ? <p className="mt-2 max-w-xl text-sm font-medium leading-relaxed text-ink/60 sm:text-base">{description}</p> : null}
         </div>
-        {action}
+        {toggle ?? action}
       </div>
-      <div className="mt-5 sm:mt-6">{children}</div>
+      <div id={bodyId} hidden={collapsible ? !collapsible.open : false} className="mt-5 sm:mt-6">
+        {children}
+      </div>
     </section>
   );
 }

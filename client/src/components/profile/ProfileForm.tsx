@@ -9,7 +9,7 @@ import { Avatar, Field, Section } from "./ProfileUi";
 export type ProfileFormHandle = { focus: () => void };
 
 /** Edición de datos de perfil y redes sociales. */
-const ProfileForm = forwardRef<ProfileFormHandle, { profile: Profile; controller: ProfileController }>(function ProfileForm({ profile, controller }, ref) {
+const ProfileForm = forwardRef<ProfileFormHandle, { profile: Profile; controller: ProfileController; open: boolean; onToggle: () => void }>(function ProfileForm({ profile, controller, open, onToggle }, ref) {
   const [draft, setDraft] = useState<ProfileDraft>(() => draftFromProfile(profile));
   const [errors, setErrors] = useState<DraftErrors>({});
   const [saving, setSaving] = useState(false);
@@ -67,7 +67,7 @@ const ProfileForm = forwardRef<ProfileFormHandle, { profile: Profile; controller
   };
 
   return (
-    <Section id="perfil" eyebrow="Datos de perfil" title="Cómo te ven." description="Tu nombre, tu foto y tus redes aparecen en los scrapbooks que compartes. Tu email nunca se muestra.">
+    <Section id="perfil" eyebrow="Datos de perfil" title="Cómo te ven." description="Tu nombre, tu foto y tus redes aparecen en los scrapbooks que compartes. Tu email nunca se muestra." collapsible={{ open, onToggle }}>
       <form
         noValidate
         onSubmit={(event) => {
