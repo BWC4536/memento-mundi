@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 
 /**
- * Titulares grandes de la marca. "Mundi" (MUNDI.svg, con el globo como punto de la i) y "Memento"
+ * Titulares grandes de la marca. "Mundi" (Mundi_bola.svg, con el globo como punto de la i) y "Memento"
  * (MEMENTO_FRASE_NARANJA.svg, con la cámara como n) son vectores medidos en em, así escalan con el texto.
  * El tamaño se fuerza con `!` porque el CSS global de h1/h2 lo fija con !important.
  */
@@ -23,9 +23,9 @@ export function ViveMundiTitle({ as: Tag = "h1", className = "" }: { as?: "h1" |
       <span aria-hidden className="block">
         <span className={`${TEAL} uppercase`}>Vive el</span>
       </span>
-      {/* "Mundi" es el SVG vectorial (el punto de la i es el globo): MUNDI.svg */}
+      {/* "Mundi" es el SVG vectorial (el punto de la i es el globo): Mundi_bola.svg */}
       <span aria-hidden className="ml-[1.05em] mt-[.04em] block">
-        <img src="/MUNDI.svg" alt="" draggable={false} className="block h-[.98em] w-auto max-w-none select-none" />
+        <img src="/Mundi_bola.svg" alt="" draggable={false} className="block h-[.98em] w-auto max-w-none select-none" />
       </span>
     </MotionTag>
   );

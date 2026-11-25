@@ -31,10 +31,9 @@ const fadeUp = (delay = 0) => ({
 export default function Landing({ header, onStore, onLogin }: Props) {
   return (
     <main className="min-h-screen overflow-x-hidden bg-[#EAE7DA] pb-32">
-      {/* Escritorio: cabecera de siempre (en móvil y tablet manda la barra global) */}
-      <div className="mx-auto hidden max-w-7xl px-12 pt-5 lg:block">{header}</div>
+      <div className="mx-auto max-w-7xl px-4 pt-5 sm:px-8 lg:px-12">{header}</div>
 
-      <div className="pt-28 sm:pt-32 lg:pt-16">
+      <div className="pt-10 sm:pt-12">
         <ViveMundiBlock priority>
           <motion.div initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="mt-10 flex flex-col items-center gap-3 min-[420px]:flex-row min-[420px]:justify-center">
             <button type="button" onClick={onStore} className="flex min-h-12 w-full items-center justify-center gap-3 rounded-2xl border-2 border-ink bg-orange px-7 py-4 text-sm font-black shadow-hard transition-transform hover:-translate-y-1 active:scale-[.97] min-[420px]:w-auto">

@@ -43,7 +43,7 @@ export default function PhotoCarousel3D({ photos, className = "", priority = fal
   const spread = 0.6 / Math.sin(Math.PI / count);
   const available = width || 320;
   // Móvil: tarjeta grande y las laterales asoman por los bordes; resto: el anillo cabe en el contenedor.
-  const cardWidth = Math.round(clamp(available < 480 ? available * 0.5 : available / (1 + 1.5 * spread), 140, 240));
+  const cardWidth = Math.round(clamp(available < 480 ? available * 0.5 : available / (1 + 1.5 * spread), 140, 340));
   const cardHeight = Math.round(cardWidth * 1.36);
   const ringRadius = Math.round(cardWidth * spread);
   const radius = useMotionValue(ringRadius);

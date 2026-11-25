@@ -10,7 +10,7 @@ export function ViveMundiBlock({ as = "h1", priority = false, children }: { as?:
   return (
     <section className="mx-auto max-w-7xl px-4 sm:px-8 lg:px-12">
       <ViveMundiTitle as={as} />
-      <motion.div initial={{ opacity: 0, scale: 0.96 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true, margin: "-40px" }} transition={{ duration: 0.6 }} className="relative mx-auto mt-8 max-w-5xl sm:mt-10">
+      <motion.div initial={{ opacity: 0, scale: 0.96 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true, margin: "-40px" }} transition={{ duration: 0.6 }} className="relative mt-8 sm:mt-10">
         <PhotoCarousel3D photos={CAROUSEL_PAISAJES} priority={priority} />
       </motion.div>
       {children}
