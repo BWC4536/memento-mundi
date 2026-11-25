@@ -6,6 +6,7 @@ import { formatDate, relativeDate } from "@/lib/scrapbook-library";
 import type { Scrapbook } from "@/lib/scrapbooks";
 import CompositionCanvas from "@/components/scrapbook/CompositionCanvas";
 import CompositionViewer from "@/components/scrapbook/CompositionViewer";
+import DownloadImageButton from "@/components/scrapbook/DownloadImageButton";
 import Mascot from "@/components/ui/Mascot";
 
 type Props = {
@@ -56,6 +57,11 @@ export default function ScrapbookPhotoView({ scrapbook, composition, onBack, onE
             >
               <Maximize2 size={17} /> Ver
             </button>
+            <DownloadImageButton
+              composition={composition}
+              title={scrapbook.title}
+              className="flex min-h-11 items-center gap-2 rounded-xl border-2 border-ink bg-white/70 px-3 text-sm font-black shadow-hard-sm transition-transform hover:-translate-y-0.5 active:translate-y-0 active:shadow-none disabled:opacity-60 sm:px-4"
+            />
           </div>
         </div>
 

@@ -6,6 +6,7 @@ import { useImmersiveMode } from "@/lib/immersive";
 import { useElementSize } from "@/hooks/useElementSize";
 import { usePanZoom } from "@/hooks/usePanZoom";
 import CompositionCanvas from "./CompositionCanvas";
+import DownloadImageButton from "./DownloadImageButton";
 
 export const VIEWER_ZOOM_LIMITS = { min: 0.5, max: 4 } as const;
 
@@ -116,15 +117,23 @@ export default function CompositionViewer({ open, composition, title, location, 
                 </p>
               ) : null}
             </div>
-            <button
-              ref={closeRef}
-              type="button"
-              onClick={onClose}
-              aria-label="Cerrar"
-              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-ink bg-cream text-ink shadow-[3px_3px_0_#FA9223] transition-transform hover:rotate-90 active:scale-95"
-            >
-              <X size={22} strokeWidth={2.6} />
-            </button>
+            <div className="flex shrink-0 items-center gap-2">
+              <DownloadImageButton
+                composition={composition}
+                title={title}
+                compact
+                className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-cream/40 bg-ink text-cream transition-colors hover:bg-orange hover:text-ink disabled:opacity-60"
+              />
+              <button
+                ref={closeRef}
+                type="button"
+                onClick={onClose}
+                aria-label="Cerrar"
+                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-ink bg-cream text-ink shadow-[3px_3px_0_#FA9223] transition-transform hover:rotate-90 active:scale-95"
+              >
+                <X size={22} strokeWidth={2.6} />
+              </button>
+            </div>
           </header>
           <ViewerStage composition={composition} title={title} />
         </motion.div>

@@ -1,6 +1,7 @@
 import { useId, type ReactNode } from "react";
 import { Camera, Compass, Luggage, MapPin, Mountain, Plane, Sun, TreePalm, type LucideIcon } from "lucide-react";
 import type { CanvasElement } from "@/lib/composition";
+import { u } from "@/lib/composition-presets";
 
 /**
  * Galería de samples del panel "Elementos". Todo se dibuja con SVG propio
@@ -164,7 +165,7 @@ export function DecorationArt({ element }: { element: Pick<CanvasElement, "sampl
   const id = element.sampleId ?? "";
 
   const Icon = TRAVEL_ICONS[id];
-  if (Icon) return <Icon width="100%" height="100%" color={color} strokeWidth={2.1} aria-hidden="true" style={{ display: "block", filter: `drop-shadow(3px 3px 0 ${color === NAVY ? ORANGE : NAVY})` }} />;
+  if (Icon) return <Icon width="100%" height="100%" color={color} strokeWidth={2.1} aria-hidden="true" style={{ display: "block", filter: `drop-shadow(${u(3)} ${u(3)} 0 ${color === NAVY ? ORANGE : NAVY})` }} />;
 
   switch (id) {
     case "tape-stripes":
