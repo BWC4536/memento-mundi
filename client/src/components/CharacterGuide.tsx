@@ -17,7 +17,8 @@ export default function CharacterGuide({
 }: CharacterGuideProps) {
   const isMiriam = character === "miriam";
   const name = isMiriam ? "Miriam" : "Arturo";
-  const imgSrc = isMiriam ? "/miriam_pegatina.svg" : "/arturo_sinterminar.svg";
+  // Recortes PNG transparentes (con borde blanco de pegatina) generados a partir de los SVG originales.
+  const imgSrc = isMiriam ? "/miriam_recorte.png" : "/arturo_recorte.png";
 
   return (
     <motion.aside
@@ -53,14 +54,16 @@ export default function CharacterGuide({
         />
       </div>
 
-      {/* Ilustración del personaje, sin recuadro: ocupa el mismo hueco que el antiguo marco */}
+      {/* Personaje recortado como pegatina, sin recuadro */}
       <div className="relative shrink-0">
-        <div className="h-16 w-16 sm:h-20 sm:w-20 transition-transform hover:scale-105 active:scale-95">
+        <div className="h-24 w-16 sm:h-32 sm:w-20 transition-transform hover:scale-105 active:scale-95">
           <img
             src={imgSrc}
             alt={name}
+            width={210}
+            height={400}
             draggable={false}
-            className="h-full w-full object-contain select-none"
+            className="h-full w-full object-contain object-bottom select-none drop-shadow-[0_3px_6px_rgba(11,33,48,.35)]"
           />
         </div>
       </div>
