@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import { motion } from "framer-motion";
 import { ArrowUpRight, ChevronRight, ShoppingBag } from "lucide-react";
 import CharacterGuide from "@/components/CharacterGuide";
@@ -9,7 +8,6 @@ import PhotoMosaic from "@/components/home/PhotoMosaic";
 import { PAISAJES, type Paisaje } from "@/lib/paisajes";
 
 type Props = {
-  header: ReactNode;
   onStore: () => void;
   onLogin: () => void;
 };
@@ -28,12 +26,10 @@ const fadeUp = (delay = 0) => ({
 });
 
 /** Página de inicio para quien aún no ha iniciado sesión. */
-export default function Landing({ header, onStore, onLogin }: Props) {
+export default function Landing({ onStore, onLogin }: Props) {
   return (
     <main className="min-h-screen overflow-x-hidden bg-[#EAE7DA] pb-32">
-      <div className="mx-auto max-w-7xl px-4 pt-5 sm:px-8 lg:px-12">{header}</div>
-
-      <div className="pt-10 sm:pt-12">
+      <div className="pt-24 sm:pt-28">
         <ViveMundiBlock priority>
           <motion.div initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="mt-10 flex flex-col items-center gap-3 min-[420px]:flex-row min-[420px]:justify-center">
             <button type="button" onClick={onStore} className="flex min-h-12 w-full items-center justify-center gap-3 rounded-2xl border-2 border-ink bg-orange px-7 py-4 text-sm font-black shadow-hard transition-transform hover:-translate-y-1 active:scale-[.97] min-[420px]:w-auto">

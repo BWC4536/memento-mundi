@@ -5,7 +5,7 @@ import { MotionConfig } from "framer-motion";
 import { useEffect } from "react";
 import { Redirect, Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
-import BrandCorner from "./components/BrandCorner";
+import SiteHeader from "./components/SiteHeader";
 import CookieConsent from "./components/CookieConsent";
 import LoginDialog from "./components/LoginDialog";
 import NavigationDock from "./components/NavigationDock";
@@ -51,7 +51,7 @@ export default function App() {
         <MotionConfig reducedMotion={reduceMotion ? "always" : "user"}>
         <TooltipProvider>
           <Toaster />
-          <BrandCorner />
+          <SiteHeader />
           <ScrapbookLibraryProvider>
             <Router />
           </ScrapbookLibraryProvider>

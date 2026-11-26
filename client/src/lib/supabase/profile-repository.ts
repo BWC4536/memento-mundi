@@ -34,6 +34,8 @@ export type SessionUser = { id: string; email: string | null; name: string };
 
 export interface ProfileRepository {
   load(): Promise<ProfileBundle>;
+  /** Solo la fila del perfil (para la cabecera): sin ajustes, pegatinas ni recompensas. */
+  loadProfile(): Promise<Profile>;
   updateProfile(update: ProfileUpdate): Promise<Profile>;
   uploadAvatar(blob: Blob, previousUrl: string | null): Promise<Profile>;
   removeAvatar(previousUrl: string | null): Promise<Profile>;
@@ -220,6 +222,10 @@ export function createCloudProfileRepository({ client, getAccessToken, user, now
       return { profile, settings: settingsResult.settings, stickers, claims, features: { privacy: privacyAvailable, settings: settingsResult.available } };
     },
 
+    async loadProfile() {
+      return loadProfile(await token());
+    },
+
     updateProfile,
 
     async uploadAvatar(blob, previousUrl) {
@@ -345,6 +351,9 @@ export function createLocalProfileRepository(user: SessionUser, storage: Storage
     async load() {
       const data = read();
       return { ...data, stickers: [], features: { privacy: true, settings: true } };
+    },
+    async loadProfile() {
+      return read().profile;
     },
     async updateProfile(update) {
       return patch({ profile: { ...read().profile, ...update } }).profile;
