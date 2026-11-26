@@ -104,7 +104,7 @@ export default function ExplorePage({ kind, id }: ExploreProps) {
         <section className="mt-10 grid gap-8 sm:mt-14 lg:grid-cols-[.78fr_1.22fr] lg:items-end">
           <div className="min-w-0">
             <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="inline-flex items-center gap-2 rounded-full border-2 border-ink bg-white/50 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.16em] shadow-hard-sm"><Compass size={13} className="text-orange" /> Coordenadas con memoria</motion.div>
-            <motion.h2 initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.06 }} className="mt-5 max-w-xl break-words font-display text-5xl font-black leading-[.91] tracking-[-0.07em] sm:text-6xl">Toca una chincheta,<br /><span className="text-orange">mira</span> quién estuvo.</motion.h2>
+            <motion.h2 initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.06 }} className="mt-5 max-w-xl break-words font-display text-5xl font-black leading-[1.04] tracking-[-.01em] sm:text-6xl">Toca una chincheta,<br /><span className="text-orange">mira</span> quién estuvo.</motion.h2>
             <div className="mt-6">
               <CharacterGuide character="miriam" speech="Cada chincheta guarda las fotos y vídeos de toda la gente que pasó por allí." subtext="Acerca el mapa para que aparezcan." />
             </div>

@@ -137,7 +137,7 @@ export default function ScrapbookCard({ book, menuOpen, onOpen, onToggleMenu, me
 
       <div className="flex min-w-0 flex-1 flex-col px-1 pb-0.5 pt-3.5">
         <div className="flex items-start gap-2">
-          <h2 className="min-w-0 flex-1 line-clamp-2 break-words font-display font-black !leading-[1] tracking-tight ![font-size:var(--title-size)]" style={{ "--title-size": titleSize(book.title) } as CSSProperties} title={book.title}>
+          <h2 className="min-w-0 flex-1 line-clamp-2 break-words font-display font-black !leading-[1] tracking-[-.01em] ![font-size:var(--title-size)]" style={{ "--title-size": titleSize(book.title) } as CSSProperties} title={book.title}>
             {book.title}
           </h2>
           {isPrivate ? (

@@ -160,7 +160,7 @@ function LockedCommunity({ onLogin, canLogin }: { onLogin: () => void; canLogin:
         ))}
       </div>
       <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-ink/55 p-6 text-center text-cream">
-        <p className="font-display text-4xl font-black leading-none">La comunidad te espera.</p>
+        <p className="font-display text-4xl font-black leading-[1.04]">La comunidad te espera.</p>
         <p className="max-w-sm text-sm font-semibold text-cream/80">Fotos y vídeos de la gente en cada chincheta del mapa. Sigue a viajeros y lugares, comenta y guarda lo que te inspire.</p>
         {canLogin ? (
           <button type="button" onClick={onLogin} className="mt-1 flex min-h-11 items-center gap-2 rounded-xl border-2 border-ink bg-orange px-5 text-sm font-black text-ink shadow-hard-sm">
@@ -224,7 +224,7 @@ export default function SocialFeed({ meId, available, canLogin, onLogin, places,
           <motion.p initial={{ opacity: 0, y: 8 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="inline-flex items-center gap-2 rounded-full border-2 border-ink bg-white/50 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.16em] shadow-hard-sm">
             <Sparkles size={13} className="text-orange" /> La comunidad
           </motion.p>
-          <h2 id="comunidad-title" className="mt-4 font-display text-5xl font-black leading-[.9] tracking-[-0.06em] sm:text-6xl">
+          <h2 id="comunidad-title" className="mt-4 font-display text-5xl font-black leading-[1.04] tracking-[-.01em] sm:text-6xl">
             Lo último desde <span className="text-orange">el mapa</span>.
           </h2>
         </div>

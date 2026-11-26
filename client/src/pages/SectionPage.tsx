@@ -40,7 +40,7 @@ function InfoSection({ section }: { section: Section }) {
           </div>
 
           <p className="mt-8 text-[10px] font-black uppercase tracking-[0.2em] text-orange">{item.eyebrow}</p>
-          <h1 className="mt-2 max-w-2xl break-words font-display text-4xl font-black leading-[.94] tracking-[-.05em] sm:text-6xl">
+          <h1 className="mt-2 max-w-2xl break-words font-display text-4xl font-black leading-[1.04] tracking-[-.01em] sm:text-6xl">
             {item.title}
           </h1>
           <p className="mt-6 max-w-xl text-base font-medium leading-relaxed text-ink/65 sm:text-lg">

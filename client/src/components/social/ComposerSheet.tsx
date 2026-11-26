@@ -126,7 +126,7 @@ export default function ComposerSheet({ places, defaultPlaceId = null, onClose, 
     <Sheet label="Nueva publicación" onClose={() => !publishing && onClose()} width="lg" layer="top">
       <div className="pr-10">
         <p className="text-[10px] font-black uppercase tracking-[0.2em] text-orange">Comunidad</p>
-        <h2 className="mt-1 font-display text-4xl font-black tracking-[-0.04em]">Nueva publicación</h2>
+        <h2 className="mt-1 font-display text-4xl font-black tracking-[-.01em]">Nueva publicación</h2>
       </div>
 
       <input ref={inputRef} type="file" multiple accept={`${IMAGE_INPUT_ACCEPT},${VIDEO_ACCEPT}`} className="hidden" onChange={(event) => { addFiles(event.target.files); event.target.value = ""; }} />

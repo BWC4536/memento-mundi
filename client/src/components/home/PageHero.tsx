@@ -39,7 +39,7 @@ export default function PageHero({ photo, eyebrow, title, children, compact = fa
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.06 }}
-          className={`mt-3 max-w-3xl break-words font-display !leading-[.9] tracking-[-.03em] ${compact ? "![font-size:clamp(2.1rem,7vw,3.75rem)]" : "![font-size:clamp(2.75rem,10vw,5.25rem)]"}`}
+          className={`mt-3 max-w-3xl break-words font-display !leading-[1.04] tracking-[-.01em] ${compact ? "![font-size:clamp(2.1rem,7vw,3.75rem)]" : "![font-size:clamp(2.75rem,10vw,5.25rem)]"}`}
         >
           {title}
         </motion.h1>

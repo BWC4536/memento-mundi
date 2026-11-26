@@ -82,7 +82,7 @@ export default function ProfileSheet({ userId, meId, onClose, onOpenPost, onEdit
           </div>
 
           <div className="mt-4">
-            <h2 className="font-display text-3xl font-black tracking-[-0.03em]">{profile.display_name || name}</h2>
+            <h2 className="font-display text-3xl font-black tracking-[-.01em]">{profile.display_name || name}</h2>
             {profile.username ? <p className="text-sm font-bold text-ink/55">@{profile.username}</p> : null}
             {profile.follows_me && !isMe ? <span className="mt-1 inline-block rounded-full bg-ink/10 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider">Te sigue</span> : null}
             {profile.bio ? <p className="mt-2 whitespace-pre-line text-sm font-medium leading-relaxed">{profile.bio}</p> : null}

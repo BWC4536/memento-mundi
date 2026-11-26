@@ -67,7 +67,7 @@ function PackCard({ pack, onAdd }: { pack: Pack; onAdd: (pack: Pack) => void }) 
           </div>
           <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between gap-3 text-cream">
             <div className="min-w-0">
-              <p className="font-display text-xl font-black leading-none break-words sm:text-2xl">{pack.name}</p>
+              <p className="font-display text-xl font-black leading-[1.04] break-words sm:text-2xl">{pack.name}</p>
               <p className="mt-1 text-xs font-bold text-cream/70">{pack.price} · envío incluido</p>
             </div>
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 border-ink bg-orange text-ink"><Package size={18} /></span>
@@ -143,7 +143,7 @@ export default function StorePage() {
           <div className="flex flex-col justify-between gap-6 border-b-2 border-ink/15 pb-6 lg:flex-row lg:items-end">
             <div>
               <p className="text-[10px] font-black uppercase tracking-[.2em] text-orange">Colección física</p>
-              <h2 className="mt-2 break-words font-display text-4xl font-black leading-none tracking-[-.05em] sm:text-6xl">
+              <h2 className="mt-2 break-words font-display text-4xl font-black leading-[1.04] tracking-[-.01em] sm:text-6xl">
                 Elige cómo<br /><span className="text-orange">quieres volver.</span>
               </h2>
               <p className="mt-4 max-w-md text-sm font-medium leading-relaxed text-ink/65">
@@ -171,7 +171,7 @@ export default function StorePage() {
           <div className="grid items-center gap-8 lg:grid-cols-[1.1fr_.9fr]">
             <div>
               <p className="text-[10px] font-black uppercase tracking-[.2em] text-orange">La pieza que fue</p>
-              <h2 className="mt-3 max-w-xl font-display text-4xl sm:text-5xl font-black leading-[.94] tracking-[-.05em] break-words">
+              <h2 className="mt-3 max-w-xl font-display text-4xl sm:text-5xl font-black leading-[1.04] tracking-[-.01em] break-words">
                 Una ciudad también puede vivir en tu pared.
               </h2>
               <p className="mt-4 max-w-lg text-sm sm:text-base font-medium leading-relaxed text-ink/70">

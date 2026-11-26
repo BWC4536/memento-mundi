@@ -57,7 +57,7 @@ export default function Landing({ header, onStore, onLogin }: Props) {
           </div>
           <div className="flex min-h-[420px] flex-col justify-end p-6 text-cream sm:min-h-[460px] sm:p-10 lg:min-h-[520px] lg:p-14">
             <p className="text-[10px] font-black uppercase tracking-[.2em] text-orange">Memento mundi · recuerda el mundo</p>
-            <h2 className="mt-3 max-w-xl font-display ![font-size:clamp(2.4rem,7vw,4.75rem)] leading-[.9] tracking-[-.03em]">
+            <h2 className="mt-3 max-w-xl font-display ![font-size:clamp(2.4rem,7vw,4.75rem)] leading-[1.04] tracking-[-.01em]">
               Cada ciudad deja huella. Guárdala.
             </h2>
             <p className="mt-4 max-w-sm text-sm font-medium leading-relaxed text-cream/80 sm:text-base">
@@ -72,7 +72,7 @@ export default function Landing({ header, onStore, onLogin }: Props) {
       <section id="como-funciona" className="mx-auto mt-20 max-w-7xl scroll-mt-28 px-4 sm:mt-24 sm:px-8 lg:px-12">
         <motion.div {...fadeUp()} className="flex flex-col items-center text-center">
           <p className="text-[10px] font-black uppercase tracking-[.2em] text-orange">Cómo funciona</p>
-          <h2 className="mt-3 font-display ![font-size:clamp(2.25rem,6vw,3.75rem)] leading-[.92] tracking-[-.03em]">Tres pasos. Ningún recuerdo perdido.</h2>
+          <h2 className="mt-3 font-display ![font-size:clamp(2.25rem,6vw,3.75rem)] leading-[1.04] tracking-[-.01em]">Tres pasos. Ningún recuerdo perdido.</h2>
         </motion.div>
 
         <div className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-3 lg:gap-7">
@@ -86,7 +86,7 @@ export default function Landing({ header, onStore, onLogin }: Props) {
               <div className="absolute right-2 top-2 w-20 sm:w-24">
                 <Mascot name={step.mascot} size="sm" tilt={index % 2 ? 6 : -6} className="drop-shadow-[0_4px_10px_rgba(11,33,48,.45)]" />
               </div>
-              <h3 className="font-display text-4xl leading-none tracking-[-.02em] lg:text-5xl">{step.title}</h3>
+              <h3 className="font-display text-4xl leading-[1.04] tracking-[-.01em] lg:text-5xl">{step.title}</h3>
               <p className="mt-2 max-w-[24ch] text-sm font-semibold leading-snug text-cream/85">{step.desc}</p>
             </motion.article>
           ))}
@@ -101,7 +101,7 @@ export default function Landing({ header, onStore, onLogin }: Props) {
       <section className="mx-auto mt-20 max-w-7xl px-4 sm:mt-24 sm:px-8 lg:px-12">
         <motion.div {...fadeUp()} className="mb-8 flex flex-col items-center text-center sm:mb-10">
           <p className="text-[10px] font-black uppercase tracking-[.2em] text-orange">Postales del mundo</p>
-          <h2 className="mt-3 font-display ![font-size:clamp(2.25rem,6vw,3.75rem)] leading-[.92] tracking-[-.03em]">Lugares que se quedan.</h2>
+          <h2 className="mt-3 font-display ![font-size:clamp(2.25rem,6vw,3.75rem)] leading-[1.04] tracking-[-.01em]">Lugares que se quedan.</h2>
         </motion.div>
         <PhotoMosaic set="b" />
       </section>
@@ -113,7 +113,7 @@ export default function Landing({ header, onStore, onLogin }: Props) {
             <Mascot name="37-pegatina-avion" size="sm" />
             <div>
               <p className="text-[10px] font-black uppercase tracking-[.2em] text-orange">Tu primera historia</p>
-              <h2 className="mt-3 font-display ![font-size:clamp(2.25rem,5.5vw,3.75rem)] leading-[.92] tracking-[-.03em]">Todo empieza con una pegatina.</h2>
+              <h2 className="mt-3 font-display ![font-size:clamp(2.25rem,5.5vw,3.75rem)] leading-[1.04] tracking-[-.01em]">Todo empieza con una pegatina.</h2>
             </div>
             <button type="button" onClick={onStore} className="flex w-fit items-center gap-2 rounded-xl border-2 border-cream bg-orange px-5 py-3.5 text-sm font-black text-ink shadow-[3px_3px_0_#EAE7DA] transition-transform hover:-translate-y-0.5 active:scale-[.97]">
               <ShoppingBag size={17} /> Ver packs <ArrowUpRight size={17} />
