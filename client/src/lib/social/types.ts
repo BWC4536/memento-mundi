@@ -18,6 +18,10 @@ export type SocialMedia = {
   width: number | null;
   height: number | null;
   duration: number | null;
+  /** Bucket donde vive el archivo ("social-private" = publicación privada, URL firmada). */
+  bucket?: "social-media" | "social-private";
+  /** Ruta en el bucket privado, solo para firmarla; la app rellena `url` con la URL firmada. */
+  path?: string | null;
 };
 
 export type SocialPlaceRef = { id: string; slug: string; name: string; country: string };

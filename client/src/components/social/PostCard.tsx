@@ -87,7 +87,9 @@ export function usePostActions(post: SocialPost) {
     if (!repo || value === previous) return;
     emitSocial({ type: "post-patch", id: post.id, patch: { visibility: value } });
     try {
-      await repo.setVisibility(post.id, value);
+      // Los archivos cambian de bucket: hay que quedarse con sus URLs nuevas (pública o firmada).
+      const updated = await repo.setVisibility(post.id, value);
+      if (updated) emitSocial({ type: "post-patch", id: post.id, patch: { media: updated.media, visibility: updated.visibility ?? value } });
       toast.success(value === "private" ? "Ahora solo la ves tú." : "Ahora es pública.");
     } catch (error) {
       emitSocial({ type: "post-patch", id: post.id, patch: { visibility: previous } });

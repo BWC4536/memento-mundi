@@ -42,16 +42,57 @@ describe("repositorio de la red social", () => {
     expect(calls[0].body).toEqual({ p_scope: "mine", p_place: null, p_author: null, p_before: "2026-11-25T10:00:00Z", p_before_id: POST_ID, p_limit: 8, p_visibility: "private" });
   });
 
-  it("cambia la privacidad de un post propio con PATCH", async () => {
-    const { calls, fetchImpl } = fakeFetch(() => undefined);
-    await repo(fetchImpl).setVisibility("p1", "private");
-    expect(calls[0]).toMatchObject({ method: "PATCH", url: `/rest/v1/social_posts?id=eq.p1&author_id=eq.${USER_ID}`, body: { visibility: "private" } });
-  });
-
-  it("publica en privado enviando la visibilidad", async () => {
-    const { calls, fetchImpl } = fakeFetch((call) => (call.url === "/rest/v1/rpc/social_feed" ? { body: [{ id: POST_ID }] } : undefined));
+  it("publica en privado: sube al bucket privado y no guarda URL pública", async () => {
+    const { calls, fetchImpl } = fakeFetch((call) => (call.url === "/rest/v1/rpc/social_feed" ? { body: [] } : undefined));
     await repo(fetchImpl).createPost({ caption: "", placeId: null, visibility: "private", media: [{ kind: "photo", blob: new Blob(["a"]), mimeType: "image/jpeg", width: 1, height: 1, duration: null }] });
     expect(calls[0].body).toMatchObject({ visibility: "private" });
+    expect(calls[1].url).toBe(`/storage/v1/object/social-private/${USER_ID}/${POST_ID}/0.jpg`);
+    expect((calls[2].body as Array<Record<string, unknown>>)[0]).toMatchObject({ bucket: "social-private", url: null, storage_path: `${USER_ID}/${POST_ID}/0.jpg` });
+  });
+
+  it("firma en bloque los medios privados del feed y deja los públicos como están", async () => {
+    const privatePath = `${USER_ID}/${POST_ID}/0.jpg`;
+    const { calls, fetchImpl } = fakeFetch((call) => {
+      if (call.url === "/rest/v1/rpc/social_feed")
+        return {
+          body: [
+            { id: POST_ID, media: [{ id: "m1", kind: "photo", url: null, bucket: "social-private", path: privatePath }] },
+            { id: "p2", media: [{ id: "m2", kind: "photo", url: "https://cdn/x.jpg", bucket: "social-media", path: null }] },
+          ],
+        };
+      if (call.url === "/storage/v1/object/sign/social-private") return { body: [{ path: privatePath, signedURL: `/object/sign/social-private/${privatePath}?token=t`, error: null }] };
+      return undefined;
+    });
+    const posts = await repo(fetchImpl).feed({ scope: "mine" });
+    expect(calls[1].body).toMatchObject({ paths: [privatePath] });
+    expect(posts[0]!.media[0]!.url).toBe(`https://demo.supabase.co/storage/v1/object/sign/social-private/${privatePath}?token=t`);
+    expect(posts[1]!.media[0]!.url).toBe("https://cdn/x.jpg");
+  });
+
+  it("al hacer privada mueve los archivos al bucket privado y luego actualiza en SQL", async () => {
+    const path = `${USER_ID}/${POST_ID}/0.jpg`;
+    const { calls, fetchImpl } = fakeFetch((call) => (call.url.startsWith("/rest/v1/social_post_media") ? { body: [{ storage_path: path, bucket: "social-media" }] } : call.url === "/rest/v1/rpc/social_feed" ? { body: [] } : undefined));
+    await repo(fetchImpl).setVisibility(POST_ID, "private");
+    expect(calls[1]).toMatchObject({ url: "/storage/v1/object/move", body: { bucketId: "social-media", sourceKey: path, destinationKey: path, destinationBucket: "social-private" } });
+    expect(calls[2]).toMatchObject({ url: "/rest/v1/rpc/social_set_visibility", body: { p_post: POST_ID, p_visibility: "private", p_public_base: "https://demo.supabase.co/storage/v1/object/public/social-media" } });
+  });
+
+  it("si falla la actualización SQL, devuelve los archivos a su bucket", async () => {
+    const path = `${USER_ID}/${POST_ID}/0.jpg`;
+    const { calls, fetchImpl } = fakeFetch((call) =>
+      call.url.startsWith("/rest/v1/social_post_media") ? { body: [{ storage_path: path, bucket: "social-private" }] } : call.url === "/rest/v1/rpc/social_set_visibility" ? { status: 400, body: { message: "boom" } } : undefined,
+    );
+    await expect(repo(fetchImpl).setVisibility(POST_ID, "public")).rejects.toThrow("boom");
+    expect(calls.at(-1)).toMatchObject({ url: "/storage/v1/object/move", body: { bucketId: "social-media", destinationBucket: "social-private" } });
+  });
+
+  it("al borrar, quita los archivos de cada bucket", async () => {
+    const { calls, fetchImpl } = fakeFetch((call) => (call.url.startsWith("/rest/v1/social_post_media") ? { body: [{ storage_path: "a", bucket: "social-private" }, { storage_path: "b", bucket: "social-media" }] } : undefined));
+    await repo(fetchImpl).deletePost(POST_ID);
+    expect(calls.filter((call) => call.method === "DELETE" && call.url.startsWith("/storage")).map((call) => [call.url, call.body])).toEqual([
+      ["/storage/v1/object/social-media", { prefixes: ["b"] }],
+      ["/storage/v1/object/social-private", { prefixes: ["a"] }],
+    ]);
   });
 
   it("like y seguir son idempotentes; quitar usa DELETE con filtros", async () => {
