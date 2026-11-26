@@ -53,13 +53,14 @@ export default function CharacterGuide({
         />
       </div>
 
-      {/* Ilustración del personaje con marco tipo pegatina brutalista */}
+      {/* Ilustración del personaje, sin recuadro: ocupa el mismo hueco que el antiguo marco */}
       <div className="relative shrink-0">
-        <div className="h-16 w-16 sm:h-20 sm:w-20 overflow-hidden rounded-2xl border-2 border-ink bg-cream shadow-hard-sm transition-transform hover:scale-105 active:scale-95">
+        <div className="h-16 w-16 sm:h-20 sm:w-20 transition-transform hover:scale-105 active:scale-95">
           <img
             src={imgSrc}
             alt={name}
-            className="h-full w-full object-cover object-top select-none"
+            draggable={false}
+            className="h-full w-full object-contain select-none"
           />
         </div>
       </div>
