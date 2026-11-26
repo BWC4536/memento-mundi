@@ -112,3 +112,20 @@ temp/
 # Manus version file (auto-generated, not part of source)
 client/public/__manus__/version.json
 .project-config.json
+
+# AI assistant config / local tooling
+CLAUDE.md
+.claude/
+AGENTS.md
+GEMINI.md
+.gemini/
+.cursor/
+.cursorrules
+.windsurfrules
+.windsurf/
+.aider*
+.continue/
+.cline/
+.clinerules
+.github/copilot-instructions.md
+.mcp.json
