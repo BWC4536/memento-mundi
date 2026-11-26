@@ -6,7 +6,84 @@
 --   pública (url = null): el feed devuelve su ruta y la app la firma al pintar.
 -- · social_set_visibility(): cambia la privacidad del post y actualiza sus medios en una sola
 --   transacción, después de que la app haya movido los archivos de bucket.
--- Requiere 006 y 008. Se puede ejecutar varias veces.
+-- Requiere 006. Incluye todo lo de 008 (si ya lo ejecutaste no pasa nada: es idempotente).
+-- Se puede ejecutar varias veces.
+
+-- ══ Lo de 008: privacidad de publicaciones ═══════════════════════════════════
+alter table public.social_posts
+  add column if not exists visibility text not null default 'public';
+
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'social_posts_visibility_check') then
+    alter table public.social_posts
+      add constraint social_posts_visibility_check check (visibility in ('public', 'private'));
+  end if;
+end $$;
+
+-- Índices para el cursor (created_at, id) en el feed general y en el de cada autor.
+create index if not exists social_posts_created_id_idx on public.social_posts (created_at desc, id desc);
+create index if not exists social_posts_author_created_id_idx on public.social_posts (author_id, created_at desc, id desc);
+
+-- Un post se ve si es mío, o si es público y su autor es visible (profiles oculta las cuentas privadas).
+drop policy if exists "Posts visibles" on public.social_posts;
+create policy "Posts visibles" on public.social_posts for select to authenticated
+  using (
+    author_id = auth.uid()
+    or (visibility = 'public' and exists (select 1 from public.profiles pr where pr.id = author_id))
+  );
+
+-- La firma cambia (nuevos parámetros): se borra la anterior para no dejar sobrecargas ambiguas en PostgREST.
+drop function if exists public.social_feed(text, uuid, uuid, uuid, timestamptz, integer);
+
+-- (social_feed se define más abajo, ya con bucket y ruta de los medios)
+
+-- Contadores públicos: ni el lugar ni las sugerencias deben delatar posts privados.
+create or replace function public.social_places_overview()
+returns jsonb
+language sql stable security invoker set search_path = public
+as $$
+  select coalesce(jsonb_agg(jsonb_build_object(
+    'id', pl.id, 'slug', pl.slug, 'name', pl.name, 'country', pl.country, 'kind', pl.kind,
+    'lat', pl.latitude, 'lng', pl.longitude, 'cover_url', pl.cover_url,
+    'post_count', (select count(*) from public.social_posts p where p.place_id = pl.id and p.visibility = 'public'),
+    'follower_count', (select count(*) from public.social_place_follows f where f.place_id = pl.id),
+    'following', exists (select 1 from public.social_place_follows f where f.place_id = pl.id and f.user_id = auth.uid()),
+    'latest_at', (select max(p.created_at) from public.social_posts p where p.place_id = pl.id and p.visibility = 'public'),
+    'my_scrapbook_ids', (
+      select coalesce(jsonb_agg(s.id), '[]'::jsonb) from public.scrapbooks s
+      where s.place_id = pl.id
+        and (s.owner_id = auth.uid() or exists (select 1 from public.scrapbook_members m where m.scrapbook_id = s.id and m.user_id = auth.uid()))
+    )
+  ) order by pl.name), '[]'::jsonb)
+  from public.social_places pl;
+$$;
+
+create or replace function public.social_suggestions(p_limit integer default 6)
+returns jsonb
+language sql stable security invoker set search_path = public
+as $$
+  select coalesce(jsonb_agg(s.item order by s.posts desc), '[]'::jsonb)
+  from (
+    select c.posts, jsonb_build_object(
+      'id', a.id, 'username', a.username, 'display_name', a.display_name, 'avatar_url', a.avatar_url, 'post_count', c.posts,
+      'preview_url', (select m.url from public.social_posts p join public.social_post_media m on m.post_id = p.id
+                      where p.author_id = a.id and p.visibility = 'public' and m.kind = 'photo' order by p.created_at desc, m.position limit 1)
+    ) as item
+    from public.profiles a
+    cross join lateral (select count(*) as posts from public.social_posts p where p.author_id = a.id and p.visibility = 'public') c
+    where a.id <> coalesce(auth.uid(), '00000000-0000-0000-0000-000000000000'::uuid)
+      and c.posts > 0
+      and not exists (select 1 from public.social_follows f where f.follower_id = auth.uid() and f.followee_id = a.id)
+    order by c.posts desc
+    limit least(greatest(coalesce(p_limit, 6), 1), 20)
+  ) s;
+$$;
+
+revoke execute on function public.social_places_overview() from anon;
+revoke execute on function public.social_suggestions(integer) from anon;
+
+-- ══ 009: bucket privado ══════════════════════════════════════════════════════
 
 -- ── Columna bucket y url opcional ────────────────────────────────────────────
 alter table public.social_post_media add column if not exists bucket text not null default 'social-media';

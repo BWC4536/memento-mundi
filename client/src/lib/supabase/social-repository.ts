@@ -7,7 +7,7 @@
  *   sirven con URLs firmadas que caducan (docs/supabase/009_social_private_bucket.sql).
  * - Los permisos los impone RLS con el token del usuario.
  */
-import type { FeedCursor, FeedQuery, NewPostMedia, SocialComment, SocialPlace, SocialPost, SocialPostVisibility, SocialProfile, SocialSuggestion } from "../social/types";
+import type { ConnectionKind, FeedCursor, FeedQuery, NewPostMedia, SocialComment, SocialPlace, SocialPost, SocialPostVisibility, SocialProfile, SocialSuggestion, SocialUser } from "../social/types";
 import { SupabaseError, type RequestOptions, type SupabaseClient } from "./client";
 
 export const SOCIAL_MEDIA_BUCKET = "social-media";
@@ -124,6 +124,15 @@ export function createSocialRepository({ client, getAccessToken, getUserId, crea
   const places = async () => (await rpc<SocialPlace[]>("social_places_overview")) ?? [];
   const profile = (userId: string) => rpc<SocialProfile | null>("social_profile", { p_user: userId });
   const suggestions = async (limit = 6) => (await rpc<SocialSuggestion[]>("social_suggestions", { p_limit: limit })) ?? [];
+
+  /** Busca personas por @usuario o nombre (sin tildes ni mayúsculas). Texto vacío = sin resultados. */
+  async function searchUsers(query: string, limit = 20) {
+    const term = query.trim().replace(/^@+/, "");
+    if (!term) return [];
+    return (await rpc<SocialUser[]>("social_search_users", { p_query: term.slice(0, 60), p_limit: limit })) ?? [];
+  }
+
+  const connections = async (kind: ConnectionKind, limit = 100) => (await rpc<SocialUser[]>("social_connections", { p_kind: kind, p_limit: limit })) ?? [];
 
   async function comments(postId: string) {
     return (
@@ -251,7 +260,7 @@ export function createSocialRepository({ client, getAccessToken, getUserId, crea
     }
   }
 
-  return { feed, post, places, profile, suggestions, comments, setLiked, setSaved, setFollowing, setFollowingPlace, addComment, deleteComment, createPost, setVisibility, deletePost, me: getUserId };
+  return { feed, post, places, profile, suggestions, searchUsers, connections, comments, setLiked, setSaved, setFollowing, setFollowingPlace, addComment, deleteComment, createPost, setVisibility, deletePost, me: getUserId };
 }
 
 export type SocialRepository = ReturnType<typeof createSocialRepository>;

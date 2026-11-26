@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { AtSign, Bookmark, Compass, Database, Globe, Lock, LogIn, Plus, RotateCcw, Sparkles, UserCheck, UserPlus, Users } from "lucide-react";
+import { AtSign, Bookmark, Compass, Database, Globe, Lock, LogIn, Plus, RotateCcw, Search, Sparkles, UserCheck, UserPlus, Users } from "lucide-react";
 import { toast } from "sonner";
 import { describeSocialError, getSocialRepository, useFeed, useInfiniteScroll } from "@/hooks/useSocial";
 import { authorName, plural } from "@/lib/social/format";
@@ -209,9 +209,10 @@ type Props = {
   onOpenPlace: (slug: string) => void;
   onCompose: () => void;
   onEditProfile: () => void;
+  onFindFriends: () => void;
 };
 
-export default function SocialFeed({ meId, available, canLogin, onLogin, places, setupMissing, navigation, onOpenPlace, onCompose, onEditProfile }: Props) {
+export default function SocialFeed({ meId, available, canLogin, onLogin, places, setupMissing, navigation, onOpenPlace, onCompose, onEditProfile, onFindFriends }: Props) {
   const [scope, setScope] = useState<FeedScope>("all");
   const [visibility, setVisibility] = useState<SocialPostVisibility | null>(null);
   // El filtro de privacidad solo existe en la pestaña propia.
@@ -237,14 +238,19 @@ export default function SocialFeed({ meId, available, canLogin, onLogin, places,
           <motion.p initial={{ opacity: 0, y: 8 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="inline-flex items-center gap-2 rounded-full border-2 border-ink bg-white/50 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.16em] shadow-hard-sm">
             <Sparkles size={13} className="text-orange" /> La comunidad
           </motion.p>
-          <h2 id="comunidad-title" className="mt-4 font-display text-5xl font-black leading-[1.04] tracking-[-.01em] sm:text-6xl">
+          <h2 id="comunidad-title" className="mt-4 font-display text-4xl font-black leading-[1.04] tracking-[-.01em] min-[400px]:text-5xl sm:text-6xl">
             Lo último desde <span className="text-orange">el mapa</span>.
           </h2>
         </div>
         {available && !missing ? (
-          <button type="button" onClick={onCompose} className="flex min-h-11 items-center gap-2 rounded-xl border-2 border-ink bg-orange px-5 text-sm font-black shadow-hard-sm transition-transform hover:-translate-y-0.5">
-            <Plus size={17} /> Publicar
-          </button>
+          <div className="flex w-full gap-2 sm:w-auto">
+            <button type="button" onClick={onFindFriends} className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border-2 border-ink bg-cream px-4 text-sm font-black shadow-hard-sm transition-transform hover:-translate-y-0.5 sm:flex-none">
+              <Search size={16} /> Buscar amigos
+            </button>
+            <button type="button" onClick={onCompose} className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border-2 border-ink bg-orange px-5 text-sm font-black shadow-hard-sm transition-transform hover:-translate-y-0.5 sm:flex-none">
+              <Plus size={17} /> Publicar
+            </button>
+          </div>
         ) : null}
       </div>
 
@@ -257,16 +263,16 @@ export default function SocialFeed({ meId, available, canLogin, onLogin, places,
           <>
             <PlaceStories places={places} onOpenPlace={onOpenPlace} onCompose={onCompose} />
 
-            <div className="mt-6 grid gap-8 lg:grid-cols-[minmax(0,1fr)_300px] xl:grid-cols-[minmax(0,1fr)_320px]">
+            <div className="mt-6 grid gap-6 md:grid-cols-[minmax(0,1fr)_260px] lg:gap-8 lg:grid-cols-[minmax(0,1fr)_300px] xl:grid-cols-[minmax(0,1fr)_320px]">
               <div className="mx-auto w-full max-w-[540px]">
                 <div role="tablist" aria-label="Qué ver" className="sticky top-3 z-20 mb-5 flex rounded-2xl border-2 border-ink bg-cream/95 p-1 shadow-hard-sm backdrop-blur">
                   {TABS.map((tab) => {
                     const Icon = tab.icon;
                     const active = scope === tab.id;
                     return (
-                      <button key={tab.id} type="button" role="tab" aria-selected={active} onClick={() => setScope(tab.id)} className={`relative flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-xl text-xs font-black transition-colors ${active ? "text-ink" : "text-ink/50 hover:text-ink"}`}>
+                      <button key={tab.id} type="button" role="tab" aria-selected={active} onClick={() => setScope(tab.id)} className={`relative flex min-h-10 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-xl px-1 text-[11px] font-black transition-colors min-[400px]:text-xs ${active ? "text-ink" : "text-ink/50 hover:text-ink"}`}>
                         {active ? <motion.span layoutId="feed-tab" className="absolute inset-0 rounded-xl bg-orange" transition={{ type: "spring", stiffness: 420, damping: 34 }} /> : null}
-                        <span className="relative flex min-w-0 items-center gap-1.5"><Icon size={14} className="shrink-0" /> <span className="max-w-[9ch] truncate sm:max-w-[14ch]">{tabLabel(tab.id, tab.label, me)}</span></span>
+                        <span className="relative flex min-w-0 items-center gap-1.5"><Icon size={14} className="hidden shrink-0 min-[400px]:block" aria-hidden /> <span className="max-w-[10ch] truncate sm:max-w-[14ch]">{tabLabel(tab.id, tab.label, me)}</span></span>
                       </button>
                     );
                   })}
@@ -304,7 +310,7 @@ export default function SocialFeed({ meId, available, canLogin, onLogin, places,
                         </motion.div>
                       </FeedWindow>
                       {index === 1 && scope === "all" ? (
-                        <div className="lg:hidden">
+                        <div className="md:hidden">
                           <SuggestionsCarousel suggestions={suggestions} onOpenProfile={navigation.onOpenProfile} />
                         </div>
                       ) : null}
@@ -331,6 +337,7 @@ export default function SocialFeed({ meId, available, canLogin, onLogin, places,
                         <>
                           <p className="font-display text-3xl font-black">Aún no sigues a nadie.</p>
                           <p className="mt-2 text-sm font-semibold text-ink/60">Sigue a viajeros o a lugares (desde su chincheta) y sus publicaciones aparecerán aquí.</p>
+                          <button type="button" onClick={onFindFriends} className="mx-auto mt-4 flex min-h-10 items-center gap-2 rounded-xl border-2 border-ink bg-orange px-4 text-sm font-black shadow-hard-sm"><Search size={15} /> Buscar amigos</button>
                         </>
                       ) : scope === "mine" ? (
                         <>
@@ -358,20 +365,23 @@ export default function SocialFeed({ meId, available, canLogin, onLogin, places,
                 </div>
               </div>
 
-              <aside className="hidden lg:block">
+              <aside className="hidden md:block">
                 <div className="sticky top-6 space-y-4">
                   {me ? (
                     <section className="flex items-center gap-3 rounded-[1.6rem] border-2 border-ink bg-cream p-4 shadow-hard-sm">
                       <button type="button" onClick={() => navigation.onOpenProfile(me.id)}><SocialAvatar author={me} size={48} /></button>
                       <div className="min-w-0 flex-1 leading-tight">
                         <button type="button" onClick={() => navigation.onOpenProfile(me.id)} className="block truncate text-sm font-black hover:underline">{authorName(me)}</button>
-                        <p className="text-[11px] font-bold text-ink/50">{plural(me.follower_count, "seguidor", "seguidores")} · {me.following_count} seguidos</p>
+                        <button type="button" onClick={onFindFriends} className="text-left text-[11px] font-bold text-ink/50 hover:text-ink hover:underline">{plural(me.follower_count, "seguidor", "seguidores")} · {me.following_count} seguidos</button>
                         {!me.username ? (
                           <button type="button" onClick={onEditProfile} className="mt-1 text-[11px] font-black text-orange hover:underline">Elige tu @usuario</button>
                         ) : null}
                       </div>
                     </section>
                   ) : null}
+                  <button type="button" onClick={onFindFriends} className="flex w-full items-center gap-2 rounded-full border-2 border-ink bg-white/70 px-4 py-2.5 text-left text-sm font-semibold text-ink/50 shadow-hard-sm transition-colors hover:bg-white hover:text-ink">
+                    <Search size={15} className="shrink-0" /> Buscar amigos…
+                  </button>
                   <SidebarSuggestions suggestions={suggestions} onOpenProfile={navigation.onOpenProfile} />
                   {followedPlaces.length ? (
                     <section className="rounded-[1.6rem] border-2 border-ink bg-white/55 p-4 shadow-hard-sm">

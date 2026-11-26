@@ -229,7 +229,7 @@ export default function ComposerSheet({ places, defaultPlaceId = null, onClose, 
         <Sparkles size={15} className="mt-0.5 shrink-0 text-orange" aria-hidden /> Los vídeos solo se publican en la comunidad y en el mapa; los scrapbooks se quedan con las fotos.
       </p>
 
-      <div className="sticky bottom-0 -mx-4 mt-5 border-t-2 border-ink/10 bg-cream px-4 pb-1 pt-4 sm:-mx-6 sm:px-6">
+      <div className="sticky bottom-0 -mx-4 mt-5 border-t-2 border-ink/10 bg-cream px-4 pb-[max(0.25rem,env(safe-area-inset-bottom))] pt-4 sm:-mx-6 sm:px-6">
         <button
           type="button"
           disabled={ready.length === 0 || processing || publishing}

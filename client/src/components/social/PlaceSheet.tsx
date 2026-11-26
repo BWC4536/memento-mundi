@@ -73,7 +73,7 @@ export default function PlaceSheet({ slug, places, placesLoading, scrapbooks, on
               <p className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-orange">
                 <MapPin size={12} aria-hidden /> {KIND_LABEL[place.kind]} · {place.country}
               </p>
-              <h2 className="mt-1 break-words font-display text-5xl font-black leading-[1.04] tracking-[-.01em] sm:text-6xl">{place.name}</h2>
+              <h2 className="mt-1 break-words font-display text-4xl font-black leading-[1.04] tracking-[-.01em] min-[400px]:text-5xl sm:text-6xl">{place.name}</h2>
               <p className="mt-2 text-xs font-black text-cream/80">
                 {plural(place.post_count, "publicación", "publicaciones")} · {plural(place.follower_count, "seguidor", "seguidores")}
               </p>

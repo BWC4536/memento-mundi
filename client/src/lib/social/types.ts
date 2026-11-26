@@ -82,6 +82,18 @@ export type SocialProfile = SocialAuthor & {
 
 export type SocialSuggestion = SocialAuthor & { post_count: number; preview_url: string | null };
 
+/** Persona en la búsqueda de amigos y en las listas de conexiones (docs/supabase/010_social_friends.sql). */
+export type SocialUser = SocialAuthor & {
+  bio: string | null;
+  post_count: number;
+  follower_count: number;
+  followed_by_me: boolean;
+  follows_me: boolean;
+};
+
+/** friends = os seguís mutuamente; followers = te siguen; following = sigues. */
+export type ConnectionKind = "friends" | "followers" | "following";
+
 /** "mine": la pestaña @usuario, solo lo que he subido yo (público y privado). */
 export type FeedScope = "all" | "following" | "saved" | "mine";
 

@@ -3,7 +3,7 @@ import { authStore, supabaseClient } from "@/lib/supabase/auth";
 import { SupabaseError } from "@/lib/supabase/client";
 import { createSocialRepository, FEED_PAGE_SIZE, SocialSetupError, type SocialRepository } from "@/lib/supabase/social-repository";
 import { applySocialEvent, isPrivate, matchesQuery, useSocialEvents } from "@/lib/social/sync";
-import type { FeedQuery, SocialPlace, SocialPost } from "@/lib/social/types";
+import type { ConnectionKind, FeedQuery, SocialPlace, SocialPost, SocialUser } from "@/lib/social/types";
 
 let repository: SocialRepository | null | undefined;
 
@@ -142,6 +142,48 @@ export function useSocialPlaces(enabled: boolean) {
   });
 
   return { places, loading, error, setupMissing, reload };
+}
+
+type PeopleState = { users: SocialUser[]; loading: boolean; error: string | null };
+
+/** Aplica "seguir/dejar de seguir" a una lista de personas (botón y contador). */
+const applyFollow = (users: SocialUser[], userId: string, following: boolean) =>
+  users.map((user) =>
+    user.id === userId && user.followed_by_me !== following
+      ? { ...user, followed_by_me: following, follower_count: Math.max(0, user.follower_count + (following ? 1 : -1)) }
+      : user,
+  );
+
+/**
+ * Buscar amigos: con texto busca personas (espera 250 ms a que dejes de escribir y descarta
+ * respuestas viejas); sin texto muestra la lista de conexiones elegida.
+ */
+export function usePeopleSearch(query: string, kind: ConnectionKind, enabled = true) {
+  const repo = getSocialRepository();
+  const [state, setState] = useState<PeopleState>({ users: [], loading: enabled, error: null });
+  const generation = useRef(0);
+  const term = query.trim().replace(/^@+/, "");
+
+  useEffect(() => {
+    if (!repo || !enabled) return;
+    const run = ++generation.current;
+    setState((current) => ({ ...current, loading: true, error: null }));
+    const timer = window.setTimeout(
+      () => {
+        (term ? repo.searchUsers(term, 30) : repo.connections(kind))
+          .then((users) => run === generation.current && setState({ users, loading: false, error: null }))
+          .catch((error) => run === generation.current && setState({ users: [], loading: false, error: describeSocialError(error) }));
+      },
+      term ? 250 : 0,
+    );
+    return () => window.clearTimeout(timer);
+  }, [repo, enabled, term, kind]);
+
+  useSocialEvents((event) => {
+    if (event.type === "follow") setState((current) => ({ ...current, users: applyFollow(current.users, event.userId, event.following) }));
+  });
+
+  return { ...state, searching: !!term };
 }
 
 /** Llama a `onHit` cuando el centinela se acerca a la vista (scroll infinito). */

@@ -8,6 +8,7 @@ import Mascot from "@/components/ui/Mascot";
 import PageHero from "@/components/home/PageHero";
 import CommentsSheet from "@/components/social/CommentsSheet";
 import ComposerSheet from "@/components/social/ComposerSheet";
+import FriendsSheet from "@/components/social/FriendsSheet";
 import PlaceSheet from "@/components/social/PlaceSheet";
 import PostSheet from "@/components/social/PostSheet";
 import ProfileSheet from "@/components/social/ProfileSheet";
@@ -18,15 +19,18 @@ import { useAppAuth } from "@/hooks/useAppAuth";
 import { getSocialRepository, useSocialPlaces } from "@/hooks/useSocial";
 import { PAISAJES } from "@/lib/paisajes";
 import { scrapbooksToPlaces } from "@/lib/scrapbook-map";
-import type { SocialPost } from "@/lib/social/types";
+import type { ConnectionKind, SocialPost } from "@/lib/social/types";
 
-/** Fichas con URL propia (compartibles): /explore/lugar/:slug, /explore/u/:id y /explore/p/:id. */
+/** Fichas con URL propia (compartibles): /explore/lugar/:slug, /explore/u/:id, /explore/p/:id y /explore/amigos/:lista. */
 type ExploreProps = { kind?: string; id?: string };
 
 const PLACE_PIN = "place:";
 const SCRAPBOOK_PIN = "sb:";
 /** Marca las entradas del historial abiertas desde la propia página, para cerrar con "atrás". */
 const IN_APP = { exploreSheet: true };
+/** Lista de conexiones <-> segmento de la URL de "Buscar amigos". */
+const FRIEND_SLUGS: Record<ConnectionKind, string> = { friends: "amigos", followers: "seguidores", following: "seguidos" };
+const friendsTabFromSlug = (slug?: string): ConnectionKind => (Object.entries(FRIEND_SLUGS).find(([, value]) => value === slug)?.[0] as ConnectionKind | undefined) ?? "friends";
 
 export default function ExplorePage({ kind, id }: ExploreProps) {
   const [, setLocation] = useLocation();
@@ -82,6 +86,7 @@ export default function ExplorePage({ kind, id }: ExploreProps) {
     }),
     [open, openPlace],
   );
+  const openFriends = useCallback((tab: ConnectionKind = "friends") => open(`/explore/amigos/${FRIEND_SLUGS[tab]}`), [open]);
   const openPost = (post: SocialPost) => open(`/explore/p/${encodeURIComponent(post.id)}`);
   const openScrapbook = (scrapbookId: string) => setLocation(`/?scrapbook=${encodeURIComponent(scrapbookId)}`);
 
@@ -156,6 +161,7 @@ export default function ExplorePage({ kind, id }: ExploreProps) {
           onOpenPlace={openPlace}
           onCompose={() => setComposer({ placeId: null })}
           onEditProfile={() => setLocation("/perfil")}
+          onFindFriends={openFriends}
         />
       </div>
 
@@ -175,7 +181,9 @@ export default function ExplorePage({ kind, id }: ExploreProps) {
                 onCompose={(placeId) => setComposer({ placeId })}
               />
             ) : kind === "u" && id ? (
-              <ProfileSheet key={`u-${id}`} userId={id} meId={meId} onClose={closeSheet} onOpenPost={openPost} onEditProfile={() => setLocation("/perfil")} />
+              <ProfileSheet key={`u-${id}`} userId={id} meId={meId} onClose={closeSheet} onOpenPost={openPost} onEditProfile={() => setLocation("/perfil")} onOpenConnections={openFriends} />
+            ) : kind === "amigos" ? (
+              <FriendsSheet key="amigos" meId={meId} initialTab={friendsTabFromSlug(id)} onClose={closeSheet} onOpenProfile={navigation.onOpenProfile} />
             ) : kind === "p" && id ? (
               <PostSheet key={`p-${id}`} postId={id} meId={meId} onClose={closeSheet} {...navigation} />
             ) : null}

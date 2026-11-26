@@ -48,7 +48,7 @@ export default function Sheet({ label, onClose, children, width = "lg", layer = 
         exit={{ y: "14%", opacity: 0 }}
         transition={{ type: "spring", stiffness: 380, damping: 34 }}
         onClick={(event) => event.stopPropagation()}
-        className={`relative flex max-h-[94dvh] w-full flex-col overflow-hidden rounded-t-[2rem] border-2 border-b-0 border-ink bg-cream shadow-hard sm:max-h-[90vh] sm:rounded-[2rem] sm:border-b-2 ${WIDTHS[width]}`}
+        className={`relative flex max-h-[94dvh] w-full flex-col overflow-hidden rounded-t-[2rem] border-2 border-b-0 border-ink bg-cream shadow-hard sm:max-h-[90dvh] sm:rounded-[2rem] sm:border-b-2 ${WIDTHS[width]}`}
       >
         <div className="pointer-events-none absolute left-1/2 top-2 z-20 h-1.5 w-12 -translate-x-1/2 rounded-full bg-ink/25 sm:hidden" aria-hidden />
         {hideClose ? null : (
@@ -56,7 +56,7 @@ export default function Sheet({ label, onClose, children, width = "lg", layer = 
             <X size={17} />
           </button>
         )}
-        <div ref={scrollRef} className={`min-h-0 flex-1 overflow-y-auto overscroll-contain ${bleed ? "" : "p-4 pt-6 sm:p-6"}`}>
+        <div ref={scrollRef} className={`min-h-0 flex-1 overflow-y-auto overscroll-contain ${bleed ? "" : "p-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-6 sm:p-6"}`}>
           {children}
         </div>
       </motion.div>

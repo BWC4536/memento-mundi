@@ -95,6 +95,22 @@ describe("repositorio de la red social", () => {
     ]);
   });
 
+  it("busca amigos sin la @ inicial y no llama al servidor con el texto vacío", async () => {
+    const { calls, fetchImpl } = fakeFetch(() => ({ body: [{ id: "u2" }] }));
+    const repository = repo(fetchImpl);
+    expect(await repository.searchUsers("   ")).toEqual([]);
+    expect(calls).toHaveLength(0);
+    const found = await repository.searchUsers("  @lucia.viaja ", 30);
+    expect(found).toEqual([{ id: "u2" }]);
+    expect(calls[0]).toMatchObject({ method: "POST", url: "/rest/v1/rpc/social_search_users", body: { p_query: "lucia.viaja", p_limit: 30 } });
+  });
+
+  it("pide mis conexiones por tipo", async () => {
+    const { calls, fetchImpl } = fakeFetch(() => ({ body: [] }));
+    await repo(fetchImpl).connections("followers");
+    expect(calls[0]).toMatchObject({ url: "/rest/v1/rpc/social_connections", body: { p_kind: "followers", p_limit: 100 } });
+  });
+
   it("like y seguir son idempotentes; quitar usa DELETE con filtros", async () => {
     const { calls, fetchImpl } = fakeFetch(() => undefined);
     const repository = repo(fetchImpl);
