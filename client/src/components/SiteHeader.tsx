@@ -1,4 +1,4 @@
-import { LogOut, UserRound } from "lucide-react";
+import { UserRound } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useAppAuth } from "@/hooks/useAppAuth";
 import { useProfileSummary } from "@/hooks/useProfile";
@@ -7,7 +7,8 @@ import { useProfileSummary } from "@/hooks/useProfile";
  * Cabecera global (se pinta una vez en App, en todas las páginas).
  * Va en `absolute`, así forma parte del flujo: se ve arriba y se va con el scroll.
  * Usa el mismo contenedor que las páginas (max-w-7xl + padding) para que el
- * logo quede centrado y el bloque de usuario alineado con el contenido, no con el borde.
+ * logo (izquierda) y el usuario (derecha) se alineen con el contenido, no con el borde.
+ * Cerrar sesión vive en Perfil › Ajustes.
  */
 export default function SiteHeader() {
   const auth = useAppAuth();
@@ -19,9 +20,7 @@ export default function SiteHeader() {
 
   return (
     <header className="pointer-events-none absolute inset-x-0 top-0 z-[80]">
-      <div className="mx-auto grid max-w-7xl grid-cols-[1fr_auto_1fr] items-center gap-2 px-4 pt-3 sm:px-8 sm:pt-5 lg:px-12">
-        <span aria-hidden="true" />
-
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-4 pt-3 sm:px-8 sm:pt-5 lg:px-12">
         <Link href="/" aria-label="Memento Mundi, ir a inicio" className="pointer-events-auto flex min-w-0 items-center gap-2 sm:gap-3">
           <img src="/MEMENTO_LOGO.svg" alt="" className="h-10 w-10 shrink-0 select-none object-contain drop-shadow-sm sm:h-14 sm:w-14" draggable={false} />
           <span className="hidden min-w-0 items-end gap-1.5 min-[380px]:flex">
@@ -31,11 +30,6 @@ export default function SiteHeader() {
         </Link>
 
         <div className="pointer-events-auto flex items-center justify-end gap-2">
-          {auth.isAuthenticated ? (
-            <button type="button" onClick={() => void auth.signOut()} aria-label="Cerrar sesión" title="Cerrar sesión" className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-ink bg-white/60 transition-transform hover:-translate-y-0.5">
-              <LogOut size={16} />
-            </button>
-          ) : null}
           <button
             type="button"
             onClick={() => (auth.isAuthenticated ? setLocation("/perfil") : auth.openLogin())}
