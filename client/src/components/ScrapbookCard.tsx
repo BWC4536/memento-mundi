@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode, Ref } from "react";
+import { useState, type CSSProperties, type ReactNode, type Ref } from "react";
 import { motion, type Variants } from "framer-motion";
 import { Ellipsis, Layers, Lock, MapPin, UserRound } from "lucide-react";
 import type { Scrapbook, ScrapbookMember } from "@/lib/scrapbooks";
@@ -18,13 +18,21 @@ const cardVariants: Variants = {
 const AVATAR_COLORS = ["bg-[#f2c5a0]", "bg-[#d8e2dc]", "bg-[#e7d8c2]", "bg-[#d7dfd6]", "bg-orange"];
 const MAX_AVATARS = 4;
 
-const initials = (name: string) =>
-  name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]!.toUpperCase())
-    .join("");
+/** Inicial del avatar: la del @usuario si lo tiene; si no, la del nombre. */
+export function memberInitial(member: Pick<ScrapbookMember, "name" | "username"> | undefined) {
+  const source = member?.username?.replace(/^@+/, "").trim() || member?.name?.trim() || "";
+  const first = Array.from(source)[0];
+  return first ? first.toLocaleUpperCase("es") : "";
+}
+
+function MemberAvatar({ member }: { member: ScrapbookMember | undefined }) {
+  const [broken, setBroken] = useState(false);
+  if (member?.avatarUrl && !broken) {
+    return <img src={member.avatarUrl} alt="" className="h-full w-full object-cover" loading="lazy" onError={() => setBroken(true)} />;
+  }
+  const initial = memberInitial(member);
+  return initial ? <>{initial}</> : <UserRound size={13} aria-hidden />;
+}
 
 /**
  * Tamaño del título: la Brasika es ancha (~.74 em por letra), así que se calcula para que quepa en UNA línea
@@ -50,17 +58,11 @@ function AvatarStack({ members, total }: { members: ScrapbookMember[]; total: nu
         return (
           <span
             key={index}
-            title={member?.name}
-            className={`relative flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-ink text-[10px] font-black ${AVATAR_COLORS[index % AVATAR_COLORS.length]}`}
+            title={member?.username ? `@${member.username}` : member?.name || undefined}
+            className={`relative flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-ink text-[11px] font-black ${AVATAR_COLORS[index % AVATAR_COLORS.length]}`}
             style={{ zIndex: shown - index }}
           >
-            {member?.avatarUrl ? (
-              <img src={member.avatarUrl} alt="" className="h-full w-full object-cover" loading="lazy" />
-            ) : member?.name ? (
-              initials(member.name)
-            ) : (
-              <UserRound size={13} aria-hidden />
-            )}
+            <MemberAvatar member={member} />
           </span>
         );
       })}

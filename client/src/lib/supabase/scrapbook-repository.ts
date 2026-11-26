@@ -7,7 +7,7 @@
  * - Los permisos los imponen las políticas RLS (migración 002) con el token del usuario.
  */
 import { ensureUuidIds, createElementId, sortByZ, type CanvasElement, type ScrapbookComposition } from "../composition";
-import type { Scrapbook } from "../scrapbooks";
+import type { Scrapbook, ScrapbookMember } from "../scrapbooks";
 import { buildAssetStoragePath, compositionToRows, rowsToComposition, SCRAPBOOK_MEDIA_BUCKET, type ScrapbookElementRow, type ScrapbookPageRow } from "../supabase-composition";
 import { SupabaseError, type SupabaseClient } from "./client";
 
@@ -43,7 +43,27 @@ type ScrapbookRow = {
   updated_at: string;
   scrapbook_members?: Array<{ count: number }>;
   scrapbook_assets?: Array<{ count: number }>;
+  owner?: ProfileEmbed | null;
+  members?: Array<{ user_id: string; profile: ProfileEmbed | null }>;
 };
+
+/** Perfil embebido (null si es privado y RLS no deja leerlo). */
+type ProfileEmbed = { username: string | null; display_name: string | null; avatar_url: string | null };
+
+const PROFILE_EMBED = "profile:profiles(username,display_name,avatar_url)";
+
+const toMember = (profile: ProfileEmbed | null | undefined): ScrapbookMember => ({
+  name: profile?.display_name?.trim() ?? "",
+  username: profile?.username?.trim() || undefined,
+  avatarUrl: profile?.avatar_url || undefined,
+});
+
+/** Propietario primero y luego los invitados (sin repetir al propietario si también figura como miembro). */
+function rowMembers(row: ScrapbookRow): ScrapbookMember[] | undefined {
+  if (!row.members) return undefined;
+  const guests = row.members.filter((member) => member.user_id !== row.owner_id).map((member) => toMember(member.profile));
+  return [toMember(row.owner), ...guests];
+}
 
 export type RepositoryDeps = {
   client: SupabaseClient;
@@ -54,7 +74,8 @@ export type RepositoryDeps = {
 };
 
 const SCRAPBOOK_SELECT =
-  "id,owner_id,title,description,cover_image_url,cover_url,location_name,city,country,latitude,longitude,is_public,created_at,updated_at,scrapbook_members(count),scrapbook_assets(count)";
+  "id,owner_id,title,description,cover_image_url,cover_url,location_name,city,country,latitude,longitude,is_public,created_at,updated_at,scrapbook_members(count),scrapbook_assets(count)," +
+  `owner:profiles!owner_id(username,display_name,avatar_url),members:scrapbook_members(user_id,${PROFILE_EMBED})`;
 
 export function rowToScrapbook(row: ScrapbookRow, index: number, cover: string): Scrapbook {
   const location = row.location_name || [row.city, row.country].filter(Boolean).join(", ") || "Sin ubicación";
@@ -76,6 +97,7 @@ export function rowToScrapbook(row: ScrapbookRow, index: number, cover: string):
     source: "cloud",
     ownerId: row.owner_id,
     isPublic: row.is_public,
+    members: rowMembers(row),
   };
 }
 

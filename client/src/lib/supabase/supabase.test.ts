@@ -102,6 +102,36 @@ describe("repositorio de scrapbooks en Supabase", () => {
     expect(books[1]).toMatchObject({ location: "Sin ubicación", cover: EMPTY_COVER, photos: 0 });
   });
 
+  it("carga propietario e invitados con foto, @usuario y nombre para los avatares", async () => {
+    const { calls, fetchImpl } = fakeFetch((call) => {
+      if (call.url.startsWith("/rest/v1/scrapbooks")) {
+        return {
+          body: [
+            {
+              id: "sb-1", owner_id: USER.id, title: "Lisboa", description: null, cover_image_url: null, cover_url: null, location_name: null, city: null, country: null, latitude: null, longitude: null, is_public: false, created_at: "2026-11-01T00:00:00Z", updated_at: "2026-11-02T00:00:00Z",
+              owner: { username: "yo", display_name: "Yo Mismo", avatar_url: "https://x/yo.webp" },
+              members: [
+                { user_id: USER.id, profile: { username: "yo", display_name: "Yo Mismo", avatar_url: "https://x/yo.webp" } },
+                { user_id: "u-2", profile: { username: "marta", display_name: "Marta", avatar_url: null } },
+                { user_id: "u-3", profile: { username: null, display_name: "Lucía", avatar_url: null } },
+                { user_id: "u-4", profile: null },
+              ],
+            },
+          ],
+        };
+      }
+      return undefined;
+    });
+    const [book] = await createScrapbookRepository(repoDeps(fetchImpl)).listScrapbooks();
+    expect(decodeURIComponent(calls[0].url)).toContain("owner:profiles!owner_id(username,display_name,avatar_url)");
+    expect(book.members).toEqual([
+      { name: "Yo Mismo", username: "yo", avatarUrl: "https://x/yo.webp" },
+      { name: "Marta", username: "marta", avatarUrl: undefined },
+      { name: "Lucía", username: undefined, avatarUrl: undefined },
+      { name: "", username: undefined, avatarUrl: undefined },
+    ]);
+  });
+
   it("Home solo lista los míos y los compartidos conmigo, no los públicos de otros", async () => {
     const row = (id: string, owner: string, isPublic: boolean) => ({ id, owner_id: owner, title: id, description: null, cover_image_url: null, cover_url: null, location_name: null, city: null, country: null, latitude: null, longitude: null, is_public: isPublic, created_at: "2026-11-01T00:00:00Z", updated_at: "2026-11-01T00:00:00Z" });
     const { fetchImpl } = fakeFetch((call) => {

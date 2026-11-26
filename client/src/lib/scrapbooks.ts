@@ -2,6 +2,8 @@ import type { ScrapbookComposition } from "./composition";
 
 export type ScrapbookMember = {
   name: string;
+  /** @usuario sin la arroba, si lo tiene. */
+  username?: string;
   avatarUrl?: string;
 };
 
