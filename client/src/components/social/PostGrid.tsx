@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { Camera, Copy, Heart, Loader2, MessageCircle, Play } from "lucide-react";
+import { Camera, Copy, Heart, Loader2, Lock, MessageCircle, Play } from "lucide-react";
 import { useInfiniteScroll } from "@/hooks/useSocial";
 import { compactCount } from "@/lib/social/format";
 import type { SocialPost } from "@/lib/social/types";
@@ -37,13 +37,14 @@ export default function PostGrid({ posts, loading, done, error, onLoadMore, onOp
           const first = post.media[0];
           const poster = post.media.find((item) => item.kind === "photo") ?? first;
           return (
-            <button key={post.id} type="button" onClick={() => onOpen(post)} className="group relative aspect-square overflow-hidden bg-ink/10 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-orange/60" aria-label={post.caption ? post.caption.slice(0, 80) : "Abrir publicación"}>
+            <button key={post.id} type="button" onClick={() => onOpen(post)} className="group relative aspect-square overflow-hidden bg-ink/10 [contain-intrinsic-size:auto_220px] [content-visibility:auto] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-orange/60" aria-label={post.caption ? post.caption.slice(0, 80) : "Abrir publicación"}>
               {poster?.kind === "video" ? (
                 <video src={`${poster.url}#t=0.1`} muted playsInline preload="metadata" className="h-full w-full object-cover" />
               ) : poster ? (
                 <img src={poster.url} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
               ) : null}
               {post.media.length > 1 ? <Copy size={16} className="absolute right-2 top-2 text-cream drop-shadow-[0_1px_2px_rgba(0,0,0,.6)]" aria-hidden /> : first?.kind === "video" ? <Play size={16} className="absolute right-2 top-2 fill-cream text-cream drop-shadow-[0_1px_2px_rgba(0,0,0,.6)]" aria-hidden /> : null}
+              {post.visibility === "private" ? <Lock size={14} className="absolute left-2 top-2 text-cream drop-shadow-[0_1px_2px_rgba(0,0,0,.6)]" aria-label="Privada" /> : null}
               <span className="absolute inset-0 hidden items-center justify-center gap-4 bg-ink/45 text-sm font-black text-cream group-hover:flex">
                 <span className="flex items-center gap-1"><Heart size={16} className="fill-cream" /> {compactCount(post.like_count)}</span>
                 <span className="flex items-center gap-1"><MessageCircle size={16} className="fill-cream" /> {compactCount(post.comment_count)}</span>

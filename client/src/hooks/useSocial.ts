@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type Re
 import { authStore, supabaseClient } from "@/lib/supabase/auth";
 import { SupabaseError } from "@/lib/supabase/client";
 import { createSocialRepository, FEED_PAGE_SIZE, SocialSetupError, type SocialRepository } from "@/lib/supabase/social-repository";
-import { applySocialEvent, useSocialEvents } from "@/lib/social/sync";
+import { applySocialEvent, isPrivate, matchesQuery, useSocialEvents } from "@/lib/social/sync";
 import type { FeedQuery, SocialPlace, SocialPost } from "@/lib/social/types";
 
 let repository: SocialRepository | null | undefined;
@@ -21,19 +21,12 @@ export function getSocialRepository(): SocialRepository | null {
 export const describeSocialError = (error: unknown) =>
   error instanceof SocialSetupError || error instanceof SupabaseError ? error.message : "No se pudo conectar con la comunidad.";
 
-const matchesQuery = (query: FeedQuery, post: SocialPost, meId: string | null) => {
-  if (query.scope === "saved") return false;
-  if (query.placeId && post.place?.id !== query.placeId) return false;
-  if (query.authorId && post.author.id !== query.authorId) return false;
-  return query.scope !== "following" || post.author.id === meId;
-};
-
 type FeedState = { posts: SocialPost[]; loading: boolean; done: boolean; error: string | null; setupMissing: boolean };
 
 /** Feed paginado por fecha (cursor = created_at del último post) y sincronizado con el resto de listas. */
 export function useFeed(query: FeedQuery, { enabled = true, pageSize = FEED_PAGE_SIZE }: { enabled?: boolean; pageSize?: number } = {}) {
   const repo = getSocialRepository();
-  const key = `${query.scope ?? "all"}|${query.placeId ?? ""}|${query.authorId ?? ""}`;
+  const key = `${query.scope ?? "all"}|${query.placeId ?? ""}|${query.authorId ?? ""}|${query.visibility ?? ""}`;
   const [state, setState] = useState<FeedState>({ posts: [], loading: enabled, done: false, error: null, setupMissing: false });
   const busy = useRef(false);
   const generation = useRef(0);
@@ -49,7 +42,8 @@ export function useFeed(query: FeedQuery, { enabled = true, pageSize = FEED_PAGE
       busy.current = true;
       setState((current) => ({ ...current, loading: true, error: null, ...(reset ? { posts: [], done: false } : {}) }));
       try {
-        const before = reset ? undefined : stateRef.current.posts.at(-1)?.created_at;
+        const last = reset ? undefined : stateRef.current.posts.at(-1);
+        const before = last ? { created_at: last.created_at, id: last.id } : undefined;
         const page = await repo.feed(queryRef.current, before, pageSize);
         if (run !== generation.current) return;
         setState((current) => {
@@ -80,6 +74,15 @@ export function useFeed(query: FeedQuery, { enabled = true, pageSize = FEED_PAGE
     // "Guardados": si quito el guardado, desaparece de la lista.
     if (event.type === "post-patch" && queryRef.current.scope === "saved" && event.patch.saved === false) {
       setState((current) => ({ ...current, posts: current.posts.filter((post) => post.id !== event.id) }));
+      return;
+    }
+    // Cambio de privacidad: se queda solo donde aún encaja (p. ej. al hacerla privada sale de "Para ti").
+    if (event.type === "post-patch" && event.patch.visibility) {
+      const meId = repo?.me() ?? null;
+      setState((current) => ({
+        ...current,
+        posts: applySocialEvent(current.posts, event).filter((post) => post.id !== event.id || queryRef.current.scope === "saved" || matchesQuery(queryRef.current, post, meId)),
+      }));
       return;
     }
     setState((current) => ({ ...current, posts: applySocialEvent(current.posts, event) }));
@@ -132,7 +135,7 @@ export function useSocialPlaces(enabled: boolean) {
             : place,
         ),
       );
-    } else if (event.type === "post-created" && event.post.place) {
+    } else if (event.type === "post-created" && event.post.place && !isPrivate(event.post)) {
       const placeId = event.post.place.id;
       setPlaces((items) => items.map((place) => (place.id === placeId ? { ...place, post_count: place.post_count + 1, latest_at: event.post.created_at } : place)));
     }

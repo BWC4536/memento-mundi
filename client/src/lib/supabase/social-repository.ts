@@ -5,7 +5,7 @@
  * - Fotos y vídeos al bucket público `social-media`, en la carpeta del usuario: <user_id>/<post_id>/<n>.<ext>.
  * - Los permisos los impone RLS con el token del usuario.
  */
-import type { FeedQuery, NewPostMedia, SocialComment, SocialPlace, SocialPost, SocialProfile, SocialSuggestion } from "../social/types";
+import type { FeedCursor, FeedQuery, NewPostMedia, SocialComment, SocialPlace, SocialPost, SocialPostVisibility, SocialProfile, SocialSuggestion } from "../social/types";
 import { SupabaseError, type RequestOptions, type SupabaseClient } from "./client";
 
 export const SOCIAL_MEDIA_BUCKET = "social-media";
@@ -70,16 +70,23 @@ export function createSocialRepository({ client, getAccessToken, getUserId, crea
   const publicUrl = (path: string) => `${client.config.url}/storage/v1/object/public/${SOCIAL_MEDIA_BUCKET}/${path}`;
 
   // ── Lecturas ──
-  async function feed(query: FeedQuery = {}, before?: string, limit = FEED_PAGE_SIZE) {
-    return (
-      (await rpc<SocialPost[]>("social_feed", {
-        p_scope: query.scope ?? "all",
-        p_place: query.placeId ?? null,
-        p_author: query.authorId ?? null,
-        p_before: before ?? null,
-        p_limit: limit,
-      })) ?? []
-    );
+  /**
+   * Una página del feed. Paginación por cursor (created_at, id) del último post: el servidor
+   * solo devuelve `limit` posts cada vez, así el scroll infinito no carga todo de golpe.
+   * Los parámetros nuevos solo se envían si hacen falta, para seguir funcionando sin 008.
+   */
+  async function feed(query: FeedQuery = {}, before?: FeedCursor | string, limit = FEED_PAGE_SIZE) {
+    const cursor = typeof before === "string" ? { created_at: before, id: null } : before;
+    const body: Record<string, unknown> = {
+      p_scope: query.scope ?? "all",
+      p_place: query.placeId ?? null,
+      p_author: query.authorId ?? null,
+      p_before: cursor?.created_at ?? null,
+      p_limit: limit,
+    };
+    if (cursor?.id) body.p_before_id = cursor.id;
+    if (query.visibility) body.p_visibility = query.visibility;
+    return (await rpc<SocialPost[]>("social_feed", body)) ?? [];
   }
 
   async function post(id: string) {
@@ -128,14 +135,15 @@ export function createSocialRepository({ client, getAccessToken, getUserId, crea
   const deleteComment = (commentId: string) => call(`/rest/v1/social_comments?id=eq.${encodeURIComponent(commentId)}`, { method: "DELETE" });
 
   // ── Publicar ──
-  async function createPost(input: { caption: string; placeId: string | null; media: NewPostMedia[] }, onProgress?: (done: number, total: number) => void) {
+  async function createPost(input: { caption: string; placeId: string | null; media: NewPostMedia[]; visibility?: SocialPostVisibility }, onProgress?: (done: number, total: number) => void) {
     const userId = me();
     if (input.media.length === 0) throw new SupabaseError("Añade al menos una foto o un vídeo.", 400, "no_media");
     const postId = createId();
     await call("/rest/v1/social_posts", {
       method: "POST",
       headers: { Prefer: "return=minimal" },
-      body: { id: postId, author_id: userId, place_id: input.placeId, caption: input.caption.trim() || null },
+      // Solo se envía si es privada: las bases sin 008 siguen aceptando posts públicos.
+      body: { id: postId, author_id: userId, place_id: input.placeId, caption: input.caption.trim() || null, ...(input.visibility === "private" ? { visibility: "private" } : {}) },
     });
 
     const uploaded: string[] = [];
@@ -163,6 +171,10 @@ export function createSocialRepository({ client, getAccessToken, getUserId, crea
     return post(postId);
   }
 
+  /** Cambia quién ve una publicación mía (RLS: solo el autor puede editarla). */
+  const setVisibility = (postId: string, visibility: SocialPostVisibility) =>
+    call(`/rest/v1/social_posts?id=eq.${encodeURIComponent(postId)}&author_id=eq.${encodeURIComponent(me())}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: { visibility } });
+
   async function deletePost(postId: string) {
     const media = (await call<Array<{ storage_path: string | null }>>(`/rest/v1/social_post_media?select=storage_path&post_id=eq.${encodeURIComponent(postId)}`)) ?? [];
     await call(`/rest/v1/social_posts?id=eq.${encodeURIComponent(postId)}`, { method: "DELETE" });
@@ -170,7 +182,7 @@ export function createSocialRepository({ client, getAccessToken, getUserId, crea
     if (paths.length) await call(`/storage/v1/object/${SOCIAL_MEDIA_BUCKET}`, { method: "DELETE", body: { prefixes: paths } }).catch(() => undefined);
   }
 
-  return { feed, post, places, profile, suggestions, comments, setLiked, setSaved, setFollowing, setFollowingPlace, addComment, deleteComment, createPost, deletePost, me: getUserId };
+  return { feed, post, places, profile, suggestions, comments, setLiked, setSaved, setFollowing, setFollowingPlace, addComment, deleteComment, createPost, setVisibility, deletePost, me: getUserId };
 }
 
 export type SocialRepository = ReturnType<typeof createSocialRepository>;

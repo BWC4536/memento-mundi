@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Bookmark, Ellipsis, Heart, Link2, MapPin, MessageCircle, Send, Trash2 } from "lucide-react";
+import { Bookmark, Ellipsis, Globe, Heart, Link2, Lock, MapPin, MessageCircle, Send, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { describeSocialError, getSocialRepository } from "@/hooks/useSocial";
 import { authorName, plural, timeAgoShort, tokenizeCaption } from "@/lib/social/format";
@@ -82,6 +82,19 @@ export function usePostActions(post: SocialPost) {
     else if (result === "failed") toast.error("No se pudo compartir.");
   };
 
+  const setVisibility = async (value: "public" | "private") => {
+    const previous = post.visibility ?? "public";
+    if (!repo || value === previous) return;
+    emitSocial({ type: "post-patch", id: post.id, patch: { visibility: value } });
+    try {
+      await repo.setVisibility(post.id, value);
+      toast.success(value === "private" ? "Ahora solo la ves tú." : "Ahora es pública.");
+    } catch (error) {
+      emitSocial({ type: "post-patch", id: post.id, patch: { visibility: previous } });
+      toast.error(describeSocialError(error));
+    }
+  };
+
   const remove = async () => {
     if (!repo) return;
     try {
@@ -93,10 +106,10 @@ export function usePostActions(post: SocialPost) {
     }
   };
 
-  return { like, save, follow, share, remove };
+  return { like, save, follow, share, setVisibility, remove };
 }
 
-function PostMenu({ post, mine, onClose, onRemove, onOpenPlace }: { post: SocialPost; mine: boolean; onClose: () => void; onRemove: () => void; onOpenPlace: (slug: string) => void }) {
+function PostMenu({ post, mine, onClose, onRemove, onToggleVisibility, onOpenPlace }: { post: SocialPost; mine: boolean; onClose: () => void; onRemove: () => void; onToggleVisibility: () => void; onOpenPlace: (slug: string) => void }) {
   const [confirming, setConfirming] = useState(false);
   const item = "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-xs font-black hover:bg-orange";
   return (
@@ -124,6 +137,9 @@ function PostMenu({ post, mine, onClose, onRemove, onOpenPlace }: { post: Social
       {mine ? (
         <>
           <div className="my-1 border-t-2 border-ink/10" />
+          <button type="button" className={item} onClick={() => { onToggleVisibility(); onClose(); }}>
+            {post.visibility === "private" ? <><Globe size={16} /> Hacer pública</> : <><Lock size={16} /> Hacer privada (solo yo)</>}
+          </button>
           <button type="button" className={`${item} text-[#b44728] hover:bg-[#f2c5a0]`} onClick={() => (confirming ? (onRemove(), onClose()) : setConfirming(true))}>
             <Trash2 size={16} /> {confirming ? "Toca otra vez para borrar" : "Eliminar publicación"}
           </button>
@@ -164,6 +180,11 @@ export default function PostCard({ post, meId, onOpenPlace, onOpenProfile, onOpe
               </>
             ) : null}
           </p>
+          {post.visibility === "private" ? (
+            <p className="mt-0.5 flex items-center gap-1 text-[11px] font-black text-ink/60">
+              <Lock size={11} className="shrink-0" aria-hidden /> Privada · solo tú
+            </p>
+          ) : null}
           {post.place ? (
             <button type="button" onClick={() => onOpenPlace(post.place!.slug)} className="mt-0.5 flex max-w-full items-center gap-1 truncate text-[11px] font-bold text-ink/60 hover:text-ink">
               <MapPin size={11} className="shrink-0" aria-hidden /> <span className="truncate">{post.place.name}, {post.place.country}</span>
@@ -173,7 +194,7 @@ export default function PostCard({ post, meId, onOpenPlace, onOpenProfile, onOpe
         <button type="button" onClick={() => setMenuOpen((open) => !open)} aria-label="Más opciones" aria-expanded={menuOpen} className="flex h-9 w-9 items-center justify-center rounded-full transition-colors hover:bg-ink/5">
           <Ellipsis size={18} />
         </button>
-        <AnimatePresence>{menuOpen ? <PostMenu post={post} mine={mine} onClose={() => setMenuOpen(false)} onRemove={() => void actions.remove()} onOpenPlace={onOpenPlace} /> : null}</AnimatePresence>
+        <AnimatePresence>{menuOpen ? <PostMenu post={post} mine={mine} onClose={() => setMenuOpen(false)} onRemove={() => void actions.remove()} onToggleVisibility={() => void actions.setVisibility(post.visibility === "private" ? "public" : "private")} onOpenPlace={onOpenPlace} /> : null}</AnimatePresence>
       </header>
 
       <div className="border-y-2 border-ink">

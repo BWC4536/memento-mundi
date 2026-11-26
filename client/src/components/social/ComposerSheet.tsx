@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Film, ImagePlus, Loader2, MapPin, Search, Sparkles, X } from "lucide-react";
+import { Film, Globe, ImagePlus, Loader2, Lock, MapPin, Search, Sparkles, X } from "lucide-react";
 import { toast } from "sonner";
 import { describeSocialError, getSocialRepository } from "@/hooks/useSocial";
 import { IMAGE_INPUT_ACCEPT, prepareImageForCanvas } from "@/lib/image-upload";
 import { emitSocial } from "@/lib/social/sync";
-import type { NewPostMedia, SocialPlace } from "@/lib/social/types";
+import type { NewPostMedia, SocialPlace, SocialPostVisibility } from "@/lib/social/types";
 import Sheet from "./Sheet";
 
 export const MAX_POST_ITEMS = 10;
@@ -67,6 +67,7 @@ export default function ComposerSheet({ places, defaultPlaceId = null, onClose, 
   const [caption, setCaption] = useState("");
   const [placeId, setPlaceId] = useState<string | null>(defaultPlaceId);
   const [placeQuery, setPlaceQuery] = useState("");
+  const [visibility, setVisibility] = useState<SocialPostVisibility>("public");
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const objectUrls = useRef<string[]>([]);
 
@@ -109,12 +110,12 @@ export default function ComposerSheet({ places, defaultPlaceId = null, onClose, 
     if (!repo || ready.length === 0 || processing || publishing) return;
     setProgress({ done: 0, total: ready.length });
     try {
-      const post = await repo.createPost({ caption, placeId, media: ready.map((draft) => draft.media!) }, (done, total) => setProgress({ done, total }));
+      const post = await repo.createPost({ caption, placeId, visibility, media: ready.map((draft) => draft.media!) }, (done, total) => setProgress({ done, total }));
       if (post) {
         emitSocial({ type: "post-created", post });
         onPublished?.(post.id);
       }
-      toast.success(selectedPlace ? `Publicado en ${selectedPlace.name}.` : "¡Publicado!");
+      toast.success(visibility === "private" ? "Guardado solo para ti." : selectedPlace ? `Publicado en ${selectedPlace.name}.` : "¡Publicado!");
       onClose();
     } catch (error) {
       toast.error(describeSocialError(error));
@@ -206,6 +207,24 @@ export default function ComposerSheet({ places, defaultPlaceId = null, onClose, 
         </div>
       </div>
 
+      <div className="mt-5">
+        <span className="text-[10px] font-black uppercase tracking-[0.16em] text-ink/55">Quién lo ve</span>
+        <div role="radiogroup" aria-label="Quién lo ve" className="mt-2 grid grid-cols-2 gap-2">
+          {([
+            ["public", Globe, "Pública", "Comunidad, mapa y tu perfil"],
+            ["private", Lock, "Solo yo", "Solo en tu pestaña @usuario"],
+          ] as const).map(([value, Icon, label, hint]) => (
+            <button key={value} type="button" role="radio" aria-checked={visibility === value} disabled={publishing} onClick={() => setVisibility(value)} className={`flex items-start gap-2 rounded-2xl border-2 border-ink p-3 text-left transition-colors ${visibility === value ? "bg-orange shadow-hard-sm" : "bg-white/60 hover:bg-white"}`}>
+              <Icon size={16} className="mt-0.5 shrink-0" />
+              <span className="leading-tight">
+                <span className="block text-sm font-black">{label}</span>
+                <span className="block text-[11px] font-semibold text-ink/60">{hint}</span>
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+
       <p className="mt-5 flex items-start gap-2 rounded-2xl border-2 border-dashed border-ink/25 p-3 text-xs font-semibold leading-relaxed text-ink/60">
         <Sparkles size={15} className="mt-0.5 shrink-0 text-orange" aria-hidden /> Los vídeos solo se publican en la comunidad y en el mapa; los scrapbooks se quedan con las fotos.
       </p>
@@ -224,7 +243,7 @@ export default function ComposerSheet({ places, defaultPlaceId = null, onClose, 
           ) : processing ? (
             "Preparando archivos…"
           ) : (
-            `Publicar${ready.length > 1 ? ` ${ready.length} archivos` : ""}`
+            `${visibility === "private" ? "Guardar solo para mí" : "Publicar"}${ready.length > 1 ? ` · ${ready.length} archivos` : ""}`
           )}
         </button>
       </div>

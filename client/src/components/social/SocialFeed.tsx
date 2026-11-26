@@ -1,12 +1,13 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { Bookmark, Compass, Database, LogIn, Plus, RotateCcw, Sparkles, UserCheck, UserPlus, Users } from "lucide-react";
+import { AtSign, Bookmark, Compass, Database, Globe, Lock, LogIn, Plus, RotateCcw, Sparkles, UserCheck, UserPlus, Users } from "lucide-react";
 import { toast } from "sonner";
 import { describeSocialError, getSocialRepository, useFeed, useInfiniteScroll } from "@/hooks/useSocial";
 import { authorName, plural } from "@/lib/social/format";
 import { emitSocial, useSocialEvents } from "@/lib/social/sync";
-import type { FeedScope, SocialPlace, SocialProfile, SocialSuggestion } from "@/lib/social/types";
+import type { FeedScope, SocialPlace, SocialPostVisibility, SocialProfile, SocialSuggestion } from "@/lib/social/types";
 import { paisajeSrc, PAISAJES } from "@/lib/paisajes";
+import FeedWindow from "./FeedWindow";
 import PostCard, { type PostNavigation } from "./PostCard";
 import SocialAvatar from "./SocialAvatar";
 
@@ -16,6 +17,16 @@ const TABS: Array<{ id: FeedScope; label: string; icon: typeof Compass }> = [
   { id: "all", label: "Para ti", icon: Compass },
   { id: "following", label: "Siguiendo", icon: Users },
   { id: "saved", label: "Guardados", icon: Bookmark },
+  // La etiqueta real es el @usuario de quien mira (ver tabLabel).
+  { id: "mine", label: "Tú", icon: AtSign },
+];
+
+const tabLabel = (id: FeedScope, fallback: string, me: SocialProfile | null) => (id === "mine" && me?.username ? `@${me.username}` : fallback);
+
+const VISIBILITY_FILTERS: Array<{ id: SocialPostVisibility | null; label: string; icon: typeof Globe | null }> = [
+  { id: null, label: "Todo", icon: null },
+  { id: "public", label: "Públicas", icon: Globe },
+  { id: "private", label: "Privadas", icon: Lock },
 ];
 
 /** Fila de lugares tipo "historias": los que sigues primero y con aro si tienen algo nuevo de las últimas 24 h. */
@@ -202,7 +213,9 @@ type Props = {
 
 export default function SocialFeed({ meId, available, canLogin, onLogin, places, setupMissing, navigation, onOpenPlace, onCompose, onEditProfile }: Props) {
   const [scope, setScope] = useState<FeedScope>("all");
-  const feed = useFeed({ scope }, { enabled: available });
+  const [visibility, setVisibility] = useState<SocialPostVisibility | null>(null);
+  // El filtro de privacidad solo existe en la pestaña propia.
+  const feed = useFeed({ scope, visibility: scope === "mine" ? visibility ?? undefined : undefined }, { enabled: available });
   const suggestions = useSuggestions(available && !setupMissing && !feed.setupMissing);
   const sentinel = useRef<HTMLDivElement>(null);
   const [me, setMe] = useState<SocialProfile | null>(null);
@@ -253,18 +266,43 @@ export default function SocialFeed({ meId, available, canLogin, onLogin, places,
                     return (
                       <button key={tab.id} type="button" role="tab" aria-selected={active} onClick={() => setScope(tab.id)} className={`relative flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-xl text-xs font-black transition-colors ${active ? "text-ink" : "text-ink/50 hover:text-ink"}`}>
                         {active ? <motion.span layoutId="feed-tab" className="absolute inset-0 rounded-xl bg-orange" transition={{ type: "spring", stiffness: 420, damping: 34 }} /> : null}
-                        <span className="relative flex items-center gap-1.5"><Icon size={14} /> {tab.label}</span>
+                        <span className="relative flex min-w-0 items-center gap-1.5"><Icon size={14} className="shrink-0" /> <span className="max-w-[9ch] truncate sm:max-w-[14ch]">{tabLabel(tab.id, tab.label, me)}</span></span>
                       </button>
                     );
                   })}
                 </div>
 
+                {scope === "mine" ? (
+                  <div className="-mt-1 mb-5 rounded-[1.4rem] border-2 border-ink bg-white/55 p-3 shadow-hard-sm">
+                    <p className="flex items-center gap-1.5 px-1 text-[11px] font-bold text-ink/60">
+                      <Lock size={12} className="shrink-0" aria-hidden /> Solo tú ves esta pestaña: todo lo que has subido, público y privado.
+                    </p>
+                    <div role="group" aria-label="Filtrar por privacidad" className="mt-2 flex gap-1.5">
+                      {VISIBILITY_FILTERS.map((filter) => {
+                        const Icon = filter.icon;
+                        const active = visibility === filter.id;
+                        return (
+                          <button key={filter.label} type="button" aria-pressed={active} onClick={() => setVisibility(filter.id)} className={`flex min-h-8 items-center gap-1 rounded-full border-2 border-ink px-3 text-[11px] font-black transition-colors ${active ? "bg-ink text-cream" : "bg-cream hover:bg-orange"}`}>
+                            {Icon ? <Icon size={12} /> : null} {filter.label}
+                          </button>
+                        );
+                      })}
+                      {!me?.username ? (
+                        <button type="button" onClick={onEditProfile} className="ml-auto text-[11px] font-black text-orange hover:underline">Elige tu @usuario</button>
+                      ) : null}
+                    </div>
+                  </div>
+                ) : null}
+
                 <div className="space-y-6">
                   {feed.posts.map((post, index) => (
                     <Fragment key={post.id}>
-                      <motion.div initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-40px" }} transition={{ duration: 0.35 }}>
-                        <PostCard post={post} meId={meId} {...navigation} />
-                      </motion.div>
+                      {/* Solo se montan las publicaciones cercanas a la vista: lo ya visto se libera de memoria. */}
+                      <FeedWindow initiallyVisible={index < 3}>
+                        <motion.div initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-40px" }} transition={{ duration: 0.35 }}>
+                          <PostCard post={post} meId={meId} {...navigation} />
+                        </motion.div>
+                      </FeedWindow>
                       {index === 1 && scope === "all" ? (
                         <div className="lg:hidden">
                           <SuggestionsCarousel suggestions={suggestions} onOpenProfile={navigation.onOpenProfile} />
@@ -293,6 +331,12 @@ export default function SocialFeed({ meId, available, canLogin, onLogin, places,
                         <>
                           <p className="font-display text-3xl font-black">Aún no sigues a nadie.</p>
                           <p className="mt-2 text-sm font-semibold text-ink/60">Sigue a viajeros o a lugares (desde su chincheta) y sus publicaciones aparecerán aquí.</p>
+                        </>
+                      ) : scope === "mine" ? (
+                        <>
+                          <p className="font-display text-3xl font-black">{visibility === "private" ? "Nada privado todavía." : visibility === "public" ? "Nada público todavía." : "Aún no has subido nada."}</p>
+                          <p className="mt-2 text-sm font-semibold text-ink/60">Al publicar puedes elegir “Solo yo” para guardar recuerdos que nadie más verá.</p>
+                          <button type="button" onClick={onCompose} className="mx-auto mt-4 flex min-h-10 items-center gap-2 rounded-xl border-2 border-ink bg-orange px-4 text-sm font-black shadow-hard-sm"><Plus size={15} /> Publicar</button>
                         </>
                       ) : scope === "saved" ? (
                         <>

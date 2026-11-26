@@ -4,7 +4,7 @@
  * Cada lista escucha estos eventos y aplica `applySocialEvent` a su estado.
  */
 import { useEffect, useRef } from "react";
-import type { SocialPost } from "./types";
+import type { FeedQuery, SocialPost } from "./types";
 
 export type SocialEvent =
   | { type: "post-patch"; id: string; patch: Partial<SocialPost> }
@@ -42,3 +42,16 @@ export function applySocialEvent(posts: SocialPost[], event: SocialEvent): Socia
       return posts;
   }
 }
+
+export const isPrivate = (post: Pick<SocialPost, "visibility">) => post.visibility === "private";
+
+/** ¿Puede este post estar en esta lista? (lo privado solo en "@usuario" o en mi propio perfil). */
+export const matchesQuery = (query: FeedQuery, post: SocialPost, meId: string | null) => {
+  if (query.scope === "saved") return false;
+  if (query.placeId && post.place?.id !== query.placeId) return false;
+  if (query.authorId && post.author.id !== query.authorId) return false;
+  if (query.visibility && (post.visibility ?? "public") !== query.visibility) return false;
+  if (query.scope === "mine") return post.author.id === meId;
+  if (isPrivate(post) && !(query.authorId && query.authorId === meId)) return false;
+  return query.scope !== "following" || post.author.id === meId;
+};

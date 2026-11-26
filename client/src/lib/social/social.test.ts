@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { authorInitials, authorName, avatarTint, compactCount, mediaAspect, timeAgoShort, tokenizeCaption } from "./format";
-import { applySocialEvent } from "./sync";
+import { applySocialEvent, matchesQuery } from "./sync";
 import type { SocialPost } from "./types";
 
 const post = (id: string, authorId = "a1"): SocialPost => ({
@@ -69,5 +69,23 @@ describe("sincronización entre listas", () => {
     expect(applySocialEvent(posts, { type: "post-patch", id: "p2", patch: { liked: true, like_count: 1 } })[1]).toMatchObject({ liked: true, like_count: 1 });
     expect(applySocialEvent(posts, { type: "post-deleted", id: "p1" }).map((item) => item.id)).toEqual(["p2", "p3"]);
     expect(applySocialEvent(posts, { type: "follow", userId: "a1", following: true }).map((item) => item.following_author)).toEqual([true, false, true]);
+  });
+});
+
+describe("listas y privacidad", () => {
+  const mine = { ...post("p1", "me"), visibility: "private" as const };
+  const other = post("p2", "otro");
+
+  it("lo privado solo entra en la pestaña propia o en mi perfil", () => {
+    expect(matchesQuery({ scope: "mine" }, mine, "me")).toBe(true);
+    expect(matchesQuery({ authorId: "me" }, mine, "me")).toBe(true);
+    expect(matchesQuery({ scope: "all" }, mine, "me")).toBe(false);
+    expect(matchesQuery({ scope: "following" }, mine, "me")).toBe(false);
+  });
+
+  it("la pestaña propia nunca muestra posts de otros y respeta el filtro", () => {
+    expect(matchesQuery({ scope: "mine" }, other, "me")).toBe(false);
+    expect(matchesQuery({ scope: "mine", visibility: "public" }, mine, "me")).toBe(false);
+    expect(matchesQuery({ scope: "mine", visibility: "private" }, mine, "me")).toBe(true);
   });
 });

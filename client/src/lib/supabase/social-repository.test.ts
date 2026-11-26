@@ -36,6 +36,24 @@ describe("repositorio de la red social", () => {
     expect(calls[0].headers.Authorization).toBe("Bearer token-1");
   });
 
+  it("pagina con cursor compuesto y pide la pestaña propia filtrada por privacidad", async () => {
+    const { calls, fetchImpl } = fakeFetch(() => ({ body: [] }));
+    await repo(fetchImpl).feed({ scope: "mine", visibility: "private" }, { created_at: "2026-11-25T10:00:00Z", id: POST_ID }, 8);
+    expect(calls[0].body).toEqual({ p_scope: "mine", p_place: null, p_author: null, p_before: "2026-11-25T10:00:00Z", p_before_id: POST_ID, p_limit: 8, p_visibility: "private" });
+  });
+
+  it("cambia la privacidad de un post propio con PATCH", async () => {
+    const { calls, fetchImpl } = fakeFetch(() => undefined);
+    await repo(fetchImpl).setVisibility("p1", "private");
+    expect(calls[0]).toMatchObject({ method: "PATCH", url: `/rest/v1/social_posts?id=eq.p1&author_id=eq.${USER_ID}`, body: { visibility: "private" } });
+  });
+
+  it("publica en privado enviando la visibilidad", async () => {
+    const { calls, fetchImpl } = fakeFetch((call) => (call.url === "/rest/v1/rpc/social_feed" ? { body: [{ id: POST_ID }] } : undefined));
+    await repo(fetchImpl).createPost({ caption: "", placeId: null, visibility: "private", media: [{ kind: "photo", blob: new Blob(["a"]), mimeType: "image/jpeg", width: 1, height: 1, duration: null }] });
+    expect(calls[0].body).toMatchObject({ visibility: "private" });
+  });
+
   it("like y seguir son idempotentes; quitar usa DELETE con filtros", async () => {
     const { calls, fetchImpl } = fakeFetch(() => undefined);
     const repository = repo(fetchImpl);

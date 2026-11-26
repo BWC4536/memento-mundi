@@ -30,10 +30,15 @@ export type SocialComment = {
   author: SocialAuthor | null;
 };
 
+/** "private": solo la ve su autor (RLS en docs/supabase/008_social_privacy.sql). */
+export type SocialPostVisibility = "public" | "private";
+
 export type SocialPost = {
   id: string;
   caption: string | null;
   created_at: string;
+  /** Puede faltar si la base de datos aún no tiene 008_social_privacy.sql: se trata como pública. */
+  visibility?: SocialPostVisibility;
   author: SocialAuthor;
   place: SocialPlaceRef | null;
   media: SocialMedia[];
@@ -73,9 +78,13 @@ export type SocialProfile = SocialAuthor & {
 
 export type SocialSuggestion = SocialAuthor & { post_count: number; preview_url: string | null };
 
-export type FeedScope = "all" | "following" | "saved";
+/** "mine": la pestaña @usuario, solo lo que he subido yo (público y privado). */
+export type FeedScope = "all" | "following" | "saved" | "mine";
 
-export type FeedQuery = { scope?: FeedScope; placeId?: string; authorId?: string };
+export type FeedQuery = { scope?: FeedScope; placeId?: string; authorId?: string; visibility?: SocialPostVisibility };
+
+/** Cursor de paginación: el último post recibido (fecha + id, para desempatar). */
+export type FeedCursor = { created_at: string; id: string };
 
 /** Archivo listo para subir desde el compositor. */
 export type NewPostMedia = {
