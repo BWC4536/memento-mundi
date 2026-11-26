@@ -64,7 +64,7 @@ function useActiveSection(ids: string[], ready: boolean) {
 
 function SectionNav({ items, active, onSelect }: { items: NavItem[]; active: string; onSelect: (id: string) => void }) {
   return (
-    <nav aria-label="Secciones del perfil" className="sticky top-0 z-30 -mx-4 border-b-2 border-ink/10 bg-[#EAE7DA]/92 px-4 py-2 backdrop-blur-md sm:-mx-8 sm:px-8 lg:top-8 lg:mx-0 lg:self-start lg:border-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none">
+    <nav aria-label="Secciones del perfil" className="sticky top-[env(safe-area-inset-top)] z-30 -mx-4 border-b-2 border-ink/10 bg-[#EAE7DA]/92 px-4 py-2 backdrop-blur-md sm:-mx-8 sm:px-8 lg:top-8 lg:mx-0 lg:self-start lg:border-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none">
       <ul className="flex gap-2 overflow-x-auto [scrollbar-width:none] lg:flex-col lg:gap-1 lg:overflow-visible">
         {items.map((item) => (
           <li key={item.id} className="shrink-0">

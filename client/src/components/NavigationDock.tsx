@@ -83,7 +83,7 @@ export default function NavigationDock() {
   if (immersive) return null;
 
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-40 flex justify-center px-2 sm:bottom-5">
+    <div className="pointer-events-none fixed inset-x-0 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-40 flex justify-center px-2 sm:bottom-[max(1.25rem,env(safe-area-inset-bottom))]">
       <div className="pointer-events-auto max-w-full">
         <Dock
           items={items}

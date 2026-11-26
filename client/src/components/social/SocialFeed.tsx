@@ -266,7 +266,7 @@ export default function SocialFeed({ meId, available, canLogin, onLogin, places,
             {/* grid-cols explícito también en móvil: una columna "auto" se estira hasta el ancho natural de las fotos y desborda la pantalla. */}
             <div className="mt-6 grid grid-cols-[minmax(0,1fr)] gap-6 md:grid-cols-[minmax(0,1fr)_260px] lg:gap-8 lg:grid-cols-[minmax(0,1fr)_300px] xl:grid-cols-[minmax(0,1fr)_320px]">
               <div className="mx-auto w-full min-w-0 max-w-[540px]">
-                <div role="tablist" aria-label="Qué ver" className="sticky top-3 z-20 mb-5 flex rounded-2xl border-2 border-ink bg-cream/95 p-1 shadow-hard-sm backdrop-blur">
+                <div role="tablist" aria-label="Qué ver" className="sticky top-[calc(0.75rem+env(safe-area-inset-top))] z-20 mb-5 flex rounded-2xl border-2 border-ink bg-cream/95 p-1 shadow-hard-sm backdrop-blur">
                   {TABS.map((tab) => {
                     const Icon = tab.icon;
                     const active = scope === tab.id;

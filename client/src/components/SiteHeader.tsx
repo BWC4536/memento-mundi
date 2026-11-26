@@ -20,7 +20,7 @@ export default function SiteHeader() {
 
   return (
     <header className="pointer-events-none absolute inset-x-0 top-0 z-[80]">
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-4 pt-3 sm:px-8 sm:pt-5 lg:px-12">
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-4 pt-[calc(0.75rem+env(safe-area-inset-top))] sm:px-8 sm:pt-[calc(1.25rem+env(safe-area-inset-top))] lg:px-12">
         <Link href="/" aria-label="Memento Mundi, ir a inicio" className="pointer-events-auto flex min-w-0 items-center gap-2 sm:gap-3">
           <img src="/MEMENTO_LOGO.svg" alt="" className="h-10 w-10 shrink-0 select-none object-contain drop-shadow-sm sm:h-14 sm:w-14" draggable={false} />
           <span className="hidden min-w-0 items-end gap-1.5 min-[380px]:flex">

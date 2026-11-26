@@ -64,6 +64,17 @@ button, input, textarea, select { font-family: "Cormorant Garamond", Georgia, se
 small, label, [class*="text-[9px]"], [class*="text-[10px]"], [class*="text-xs"] { line-height: 1.2; }
 body::before { content: ""; pointer-events: none; position: fixed; inset: 0; z-index: 60; opacity: .075; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E"); mix-blend-mode: multiply; }
 button, a { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+/* Comportamiento táctil de app nativa (sobre todo instalada como PWA):
+   sin destello al tocar, sin rebote elástico de la página y sin menú/selección accidental en la interfaz.
+   El texto de contenido (posts, comentarios, bios) y las fotos siguen siendo seleccionables/guardables. */
+html { -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+html, body { overscroll-behavior-y: none; }
+button, a, nav, header, label, summary, [role="button"], [role="tab"], [role="menuitem"], .dock-item, img[alt=""], .mascot-img, svg {
+  -webkit-touch-callout: none; -webkit-user-select: none; user-select: none;
+}
+input, textarea, select, [contenteditable]:not([contenteditable="false"]) {
+  -webkit-touch-callout: default; -webkit-user-select: text; user-select: text;
+}
 button:focus-visible, a:focus-visible { outline: 3px solid var(--primary); outline-offset: 3px; }
 .sticker-button { position: relative; overflow: hidden; }
 .sticker-button::after { content: ""; position: absolute; right: -2px; top: -2px; width: 18px; height: 18px; background: var(--background); border-left: 2px solid var(--foreground); border-bottom: 2px solid var(--foreground); transform: translate(9px, -9px) rotate(45deg); transition: transform .18s cubic-bezier(.23,1,.32,1); }
