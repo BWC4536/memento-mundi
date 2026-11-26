@@ -88,7 +88,7 @@ export default function MediaCarousel({ media, alt, onDoubleTap }: Props) {
   if (media.length === 0) return null;
 
   return (
-    <div className="group/carousel relative w-full select-none overflow-hidden bg-ink/5" style={{ aspectRatio: String(aspect) }} onPointerDown={(event) => (pressAt.current = { x: event.clientX, y: event.clientY })} onPointerUp={handleTap}>
+    <div className="group/carousel relative w-full min-w-0 max-w-full select-none overflow-hidden bg-ink/5" style={{ aspectRatio: String(aspect) }} onPointerDown={(event) => (pressAt.current = { x: event.clientX, y: event.clientY })} onPointerUp={handleTap}>
       <div
         ref={trackRef}
         className="flex h-full w-full snap-x snap-mandatory overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"

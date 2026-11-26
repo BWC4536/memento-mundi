@@ -163,7 +163,7 @@ export default function PostCard({ post, meId, onOpenPlace, onOpenProfile, onOpe
   const longCaption = caption.length > 140 || caption.includes("\n");
 
   return (
-    <article className="relative overflow-visible rounded-[1.6rem] border-2 border-ink bg-cream shadow-hard-sm" aria-label={`Publicación de ${name}`}>
+    <article className="relative w-full min-w-0 overflow-visible rounded-[1.6rem] border-2 border-ink bg-cream shadow-hard-sm" aria-label={`Publicación de ${name}`}>
       <header className="flex items-center gap-3 px-3.5 py-3">
         <button type="button" onClick={() => onOpenProfile(post.author.id)} aria-label={`Ver perfil de ${name}`} className="transition-transform hover:scale-105">
           <SocialAvatar author={post.author} size={38} />
